@@ -55,6 +55,7 @@ class RecommendationController:
         fallback_strategy: IRecommendationStrategy | None = None,
         settings: Settings | None = None,
         logger: Any | None = None,
+        startup_degradation_reason: str | None = None,
     ) -> None:
         self._strategy = strategy
         self._feature_store = feature_store
@@ -64,6 +65,12 @@ class RecommendationController:
         self._fallback = fallback_strategy
         self._settings = settings or load_settings()
         self._logger = logger
+        # Set by the composition root when the configured strategy could not be
+        # loaded at startup and the fallback took its place. That degradation
+        # lasts for the life of the process, so every response has to declare
+        # it: otherwise the one case where the system is *persistently*
+        # degraded would be the only one the client cannot see (NFR-05).
+        self._startup_degradation_reason = startup_degradation_reason
 
     @property
     def strategy(self) -> IRecommendationStrategy:
@@ -83,20 +90,22 @@ class RecommendationController:
 
         self._assert_user_exists(user_id)
 
-        degradation_reason: str | None = None
+        runtime_reason: str | None = None
         features = self._load_features(user_id)
         if features is None:
-            degradation_reason = FeatureStoreUnavailableError.code
+            runtime_reason = FeatureStoreUnavailableError.code
             features = UserFeatures(
                 user_id=user_id,
                 is_cold_start=True,
                 feature_store_version=self._safe_store_version(),
             )
         elif features.is_cold_start:
-            degradation_reason = ColdStartError.code
+            runtime_reason = ColdStartError.code
 
-        ranking, strategy_used, reason = self._rank(features, k, degradation_reason)
-        degradation_reason = reason
+        ranking, strategy_used, reason = self._rank(features, k, runtime_reason)
+        # A failure during this request takes precedence over the startup one,
+        # because it is the more specific explanation of what the client got.
+        degradation_reason = reason or self._startup_degradation_reason
 
         response = RecommendationResponse(
             user_id=user_id,

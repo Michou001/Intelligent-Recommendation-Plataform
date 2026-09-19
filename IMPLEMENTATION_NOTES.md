@@ -6,8 +6,8 @@ specification, and this file records what was built, what was measured, where
 the implementation departed from the text, and what was left out.
 
 - **Language / runtime:** Python 3.11 target (`requires-python = ">=3.11"`), developed and verified on CPython 3.13.14.
-- **Source:** 39 modules, 5 584 lines. **Tests:** 31 modules, 3 286 lines, **258 tests, all passing**.
-- **Static analysis:** `ruff check .` clean, `black --check .` clean, `mypy` clean (38 source files).
+- **Source:** 39 modules plus the interface page, 5 584 lines. **Tests:** 31 modules, 3 286 lines, **264 tests, all passing**.
+- **Static analysis:** `ruff check .` clean, `black --check .` clean, `mypy` clean (39 source files).
 - **Dataset:** MovieLens `ml-latest-small` — 100 836 ratings ingested, 100 789 after cleaning, 610 users, 9 690 items; interaction matrix 609 × 7 343 (61 687 non-zeros, 1.38 % density).
 
 ---
@@ -34,6 +34,7 @@ the implementation departed from the text, and what was left out.
 | `InteractionEventQueue` | Messaging | `src/messaging/interaction_event_queue.py` | FR-02, FR-06 | **Implemented** (RabbitMQ backend written, in-process used) |
 | `FeedbackHistoryService` | Messaging | `src/messaging/feedback_history_service.py` | FR-06 | **Implemented** (idempotent, retries) |
 | `IUserProfileRepository`, `ICatalogRepository`, `IInteractionHistoryRepository`, `IEmbeddingRepository` | Persistence | `src/persistence/interfaces.py` + adapters | FR-01, FR-06, NFR-03 | **Implemented** |
+| Presentation Layer (UI) — Section 5.2 | Presentation | `src/presentation/schemas.py`, `src/presentation/static/index.html` | FR-01, FR-04, FR-05 | **Implemented** (served at `/ui`) |
 
 ### Concrete adapters named in Section 3.2
 
@@ -74,6 +75,7 @@ the implementation departed from the text, and what was left out.
 | `benchmarks/latency_p95.py` | Required by Section 9.7 | **Implemented** |
 | `tests/test_architecture_imports.py` | The import rule "verified by a test" of Section 9.2 | **Implemented** |
 | `tests/test_failure_injection.py` | The failure-injection cases of Section 9.9 | **Implemented** |
+| `src/presentation/static/index.html` | The UI/Web layer Section 5.2 describes; the Section 9.2 tree lists only the schemas (deviation 17) | **Implemented** |
 
 ---
 
@@ -225,6 +227,11 @@ python benchmarks/latency_p95.py --requests 1000 --json
     in the document. Table 10 distinguishes a normal 200 from a "200 degraded"
     but gives the client no way to tell them apart; these two fields make the
     distinction observable, and the failure-injection tests assert on them.
+    They also cover the startup case: if the configured strategy could not be
+    loaded and the fallback took its place, that substitution lasts for the
+    life of the process, so every response declares it rather than only
+    `/health` — otherwise the one persistently degraded case would be the only
+    one a client cannot detect.
 
 16. **A shared `StrategyDecorator` base and a per-request operational context
     were added** in `ai/decorators/__init__.py`. Section 9.9 requires one
@@ -234,6 +241,19 @@ python benchmarks/latency_p95.py --requests 1000 --json
     `LoggingDecorator` emits one record, without the decorators knowing about
     each other and without breaking concurrent requests.
 
+17. **A web interface was added at `src/presentation/static/index.html`.** The
+    Section 9.2 tree declares only `presentation/schemas.py`, but Section 5.2
+    describes the Presentation Layer as the part that "sends recommendation
+    requests and shows the results" and that "does not contain any business
+    logic or AI logic". The page is exactly that: static HTML, CSS and vanilla
+    JavaScript with no build step and no external dependency, calling the same
+    public endpoints any other client would, over the same origin. It is
+    mounted at `/ui` only when the directory exists, so the service still
+    starts without it — and a test asserts both that it is served and that the
+    page computes nothing (no scoring, no ranking, no feature handling).
+    Adding it makes the implementation *more* consistent with Section 5.2, not
+    less.
+
 ---
 
 ## (d) Not implemented
@@ -242,9 +262,6 @@ python benchmarks/latency_p95.py --requests 1000 --json
 
 - **Authentication and authorization.** Section 5.2 assigns them to the
   Application/Controller layer. No auth exists: every request is anonymous.
-- **Presentation layer beyond schemas.** Section 5.2 describes a UI/Web/Mobile
-  layer. The Section 9.2 tree declares only `presentation/schemas.py`, and that
-  is all that was built — there is no user interface.
 - **Horizontal scalability (NFR-02).** No container image, no orchestration
   manifest, no load-balancing configuration. The in-process cache and queue are
   per-instance by construction, so running several replicas requires switching
@@ -277,7 +294,7 @@ python benchmarks/latency_p95.py --requests 1000 --json
 ## Verification commands
 
 ```bash
-python -m pytest                    # 258 tests
+python -m pytest                    # 264 tests
 python -m ruff check .              # clean
 python -m black --check .           # clean
 python -m mypy                      # clean, 38 source files

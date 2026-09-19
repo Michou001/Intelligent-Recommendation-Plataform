@@ -20,11 +20,13 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from pathlib import Path as FilePath
 from typing import Any
 
 from fastapi import Depends, FastAPI, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from ai.decorators import build_chain
 from ai.decorators.caching_decorator import CachingDecorator
@@ -50,6 +52,9 @@ from presentation.schemas import (
     InteractionRequest,
     RecommendationResponse,
 )
+
+#: Static assets of the Presentation Layer, served at /ui when present.
+STATIC_DIR = FilePath(__file__).resolve().parents[1] / "presentation" / "static"
 
 
 @dataclass
@@ -95,6 +100,10 @@ def build_components(settings: Settings | None = None) -> ApplicationComponents:
         fallback_strategy=fallback,
         settings=settings,
         logger=logger,
+        # When the configured strategy could not be loaded, the fallback is
+        # serving in its place for the whole life of the process; the client
+        # is told so on every response, not only in /health.
+        startup_degradation_reason=(ModelUnavailableError.code if startup_error else None),
     )
 
     return ApplicationComponents(
@@ -281,7 +290,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             user_profiles=_safe_count(parts.profiles.count),
         )
 
+    _mount_user_interface(app)
     return app
+
+
+def _mount_user_interface(app: FastAPI) -> None:
+    """Serve the Presentation Layer page, when it is present.
+
+    Section 5.2 describes the Presentation Layer as the part that sends
+    recommendation requests and shows the results, and states that it holds no
+    business or AI logic. The page mounted here is exactly that: static assets
+    that call the same public endpoints any other client would, over the same
+    origin, so no component of the inner layers is aware of it.
+
+    Serving it is optional. If the directory is absent the API still starts,
+    which keeps the deployment of the service independent from the interface.
+    """
+    if not STATIC_DIR.is_dir():
+        return
+
+    app.mount("/ui", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
+
+    @app.get("/", include_in_schema=False)
+    def _index() -> RedirectResponse:
+        return RedirectResponse(url="/ui/")
 
 
 def _safe_count(counter: Any) -> int:

@@ -193,3 +193,78 @@ def test_an_unloadable_active_strategy_still_starts_the_service(
         assert health["status"] == "degraded"
         assert health["active_strategy"] == "popularity"
         assert client.get("/recommendations/1?k=3").status_code == 200
+
+
+def test_a_startup_substitution_is_declared_on_every_response(
+    seeded: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A degradation that lasts the whole process must be visible to the client.
+
+    When the configured strategy cannot be loaded, the fallback serves every
+    request from then on. Reporting that only in /health would leave the one
+    persistently degraded case as the only one the caller cannot detect.
+    """
+    monkeypatch.setenv("RECO_ACTIVE_STRATEGY", "ncf")  # no checkpoint in the temp dir
+    from config.settings import load_settings
+
+    with TestClient(create_app(load_settings())) as client:
+        body = client.get("/recommendations/1?k=3").json()
+        assert body["degraded"] is True
+        assert body["degradation_reason"] == "model_unavailable"
+        assert body["strategy_id"] == "popularity"
+        assert len(body["items"]) == 3
+
+
+def test_a_healthy_service_does_not_mark_its_responses_degraded(client: TestClient) -> None:
+    """The counterpart: no false positives when everything loaded correctly."""
+    body = client.get("/recommendations/1?k=3").json()
+    assert body["degraded"] is False
+    assert body["degradation_reason"] is None
+
+
+# --------------------------------------------------------------------------
+# Presentation layer (Section 5.2)
+# --------------------------------------------------------------------------
+
+
+def test_the_user_interface_is_served(client: TestClient) -> None:
+    """Section 5.2's Presentation Layer: a page that a person can actually use."""
+    response = client.get("/ui/")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Plataforma de Recomendación Inteligente" in response.text
+
+
+def test_the_root_path_leads_to_the_interface(client: TestClient) -> None:
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code in {307, 308}
+    assert response.headers["location"] == "/ui/"
+
+
+def test_the_interface_carries_no_business_logic() -> None:
+    """Section 5.2: the presentation layer holds no business or AI logic.
+
+    The page may only reach the service through its public endpoints; it must
+    not reimplement ranking, scoring or feature handling in the browser.
+    """
+    from application.api import STATIC_DIR
+
+    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    for forbidden in ("argpartition", "latent", "embedding", "cosine", "sort("):
+        assert forbidden not in page, f"the page appears to compute: {forbidden}"
+    # It talks to the documented endpoints and nothing else.
+    assert "/recommendations/" in page
+    assert "/interactions" in page
+    assert "/health" in page
+
+
+def test_the_api_starts_without_the_interface(
+    seeded: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Serving the page is optional: the service does not depend on it."""
+    import application.api as api_module
+
+    monkeypatch.setattr(api_module, "STATIC_DIR", api_module.STATIC_DIR / "missing")
+    with TestClient(api_module.create_app(seeded)) as bare:
+        assert bare.get("/health").status_code == 200
+        assert bare.get("/ui/").status_code == 404

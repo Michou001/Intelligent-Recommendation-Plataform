@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plataforma de Recomendación Inteligente</title>
+<style>
+  :root {
+    --tinta: #1c2b36;
+    --texto: #2f3e4a;
+    --suave: #6b7a87;
+    --linea: #d8dee3;
+    --fondo: #f4f6f7;
+    --acento: #2c6e83;
+    --alerta: #8a5a1f;
+    --error: #9b3226;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 15px;
+    color: var(--texto);
+    background: var(--fondo);
+    line-height: 1.5;
+  }
+  header {
+    background: var(--tinta);
+    color: #fff;
+    padding: 14px 20px;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header span { font-size: 13px; color: #a9b8c3; }
+  #estado { margin-left: auto; font-size: 12px; color: #a9b8c3; }
+  #estado b { color: #fff; font-weight: 600; }
+
+  main { max-width: 860px; margin: 22px auto; padding: 0 16px 40px; }
+
+  .panel {
+    background: #fff;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .panel h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--suave);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+
+  form { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .campo { display: flex; flex-direction: column; }
+  .campo label { font-size: 13px; color: var(--suave); margin-bottom: 4px; }
+  .campo input {
+    font: inherit;
+    padding: 6px 8px;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    width: 130px;
+  }
+  .campo input:focus { outline: 2px solid var(--acento); outline-offset: -1px; }
+  .pista { font-size: 12px; color: var(--suave); margin-top: 4px; }
+
+  button {
+    font: inherit;
+    padding: 7px 14px;
+    border: 1px solid var(--acento);
+    background: var(--acento);
+    color: #fff;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  button:hover { background: #245a6c; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.secundario { background: #fff; color: var(--acento); }
+  button.secundario:hover { background: #eef3f5; }
+
+  .meta {
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--suave);
+    border-bottom: 1px solid var(--linea);
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+  }
+  .meta b { color: var(--texto); font-weight: 600; }
+
+  .aviso {
+    border-left: 3px solid var(--alerta);
+    background: #fdf6ea;
+    color: var(--alerta);
+    padding: 9px 12px;
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+  .fallo {
+    border-left: 3px solid var(--error);
+    background: #fbefed;
+    color: var(--error);
+    padding: 9px 12px;
+    font-size: 14px;
+  }
+  .fallo code { font-size: 12px; opacity: .8; }
+
+  ol { list-style: none; margin: 0; padding: 0; }
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 10px 2px;
+    border-bottom: 1px solid #eceff1;
+  }
+  li:last-child { border-bottom: none; }
+  .puesto {
+    font-variant-numeric: tabular-nums;
+    color: var(--suave);
+    font-size: 13px;
+    min-width: 20px;
+    text-align: right;
+  }
+  .cuerpo { flex: 1; min-width: 0; }
+  .titulo { color: var(--tinta); }
+  .generos { font-size: 12px; color: var(--suave); margin-top: 2px; }
+  .puntaje {
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    color: var(--suave);
+    min-width: 54px;
+    text-align: right;
+  }
+  li button {
+    padding: 3px 9px;
+    font-size: 12px;
+    background: #fff;
+    color: var(--acento);
+  }
+  li button:hover { background: #eef3f5; }
+  li button.listo { border-color: var(--linea); color: var(--suave); }
+
+  .vacio { color: var(--suave); font-size: 14px; }
+  footer {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 16px 30px;
+    font-size: 12px;
+    color: var(--suave);
+  }
+  footer a { color: var(--acento); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Plataforma de Recomendación Inteligente</h1>
+  <span>Ingeniería de Software II — Milestone 2</span>
+  <div id="estado">consultando servicio…</div>
+</header>
+
+<main>
+
+  <div class="panel">
+    <h2>Consultar recomendaciones</h2>
+    <form id="formulario">
+      <div class="campo">
+        <label for="usuario">Usuario</label>
+        <input type="number" id="usuario" value="1" min="1" required>
+        <div class="pista" id="rango">identificador numérico</div>
+      </div>
+      <div class="campo">
+        <label for="cantidad">Cantidad</label>
+        <input type="number" id="cantidad" value="10" min="1" max="100" required>
+        <div class="pista">entre 1 y 100</div>
+      </div>
+      <button type="submit" id="enviar">Recomendar</button>
+      <button type="button" class="secundario" id="azar">Usuario al azar</button>
+    </form>
+  </div>
+
+  <div class="panel" id="salida">
+    <h2>Resultados</h2>
+    <p class="vacio">Introduce un usuario y pulsa «Recomendar».</p>
+  </div>
+
+</main>
+
+<footer>
+  Contrato REST: <code>GET /recommendations/{user_id}?k=10</code> ·
+  <a href="/docs">Documentación de la API</a>
+</footer>
+
+<script>
+"use strict";
+
+const salida = document.getElementById("salida");
+const campoUsuario = document.getElementById("usuario");
+const campoCantidad = document.getElementById("cantidad");
+const botonEnviar = document.getElementById("enviar");
+
+// Rango de usuarios con vectores materializados en el feature store. Se ajusta
+// al arrancar con lo que informa /health, para no codificar el tamaño del
+// dataset en la interfaz.
+let totalUsuarios = null;
+
+function escapar(texto) {
+  const d = document.createElement("div");
+  d.textContent = texto == null ? "" : String(texto);
+  return d.innerHTML;
+}
+
+async function consultarEstado() {
+  const destino = document.getElementById("estado");
+  try {
+    const r = await fetch("/health");
+    const s = await r.json();
+    totalUsuarios = s.user_profiles > 0 ? s.user_profiles : null;
+    if (totalUsuarios) {
+      document.getElementById("rango").textContent = "de 1 a " + totalUsuarios;
+    }
+    const etiqueta = s.status === "ok" ? "operativo" : "degradado";
+    destino.innerHTML =
+      "servicio <b>" + etiqueta + "</b> · modelo <b>" + escapar(s.active_strategy) + "</b>" +
+      " · catálogo <b>" + s.catalog_items.toLocaleString("es-MX") + "</b>";
+  } catch (e) {
+    destino.innerHTML = "servicio <b>no disponible</b>";
+  }
+}
+
+function pintarError(codigo, mensaje, detalle) {
+  salida.innerHTML =
+    "<h2>Resultados</h2><div class='fallo'>" + escapar(mensaje) +
+    (detalle ? "<br><code>" + escapar(detalle) + "</code>" : "") +
+    "<br><code>" + escapar(codigo) + "</code></div>";
+}
+
+function pintarRecomendaciones(datos) {
+  let html = "<h2>Resultados</h2>";
+
+  if (datos.degraded) {
+    html +=
+      "<div class='aviso'>Respuesta degradada (" + escapar(datos.degradation_reason) +
+      "). El modelo configurado no estuvo disponible y se respondió con el " +
+      "ranking de popularidad, sin interrumpir el servicio.</div>";
+  }
+
+  html +=
+    "<div class='meta'>" +
+    "<div>modelo <b>" + escapar(datos.strategy_id) + "</b></div>" +
+    "<div>versión <b>" + escapar(datos.model_version) + "</b></div>" +
+    "<div>feature store <b>" + escapar(datos.feature_store_version) + "</b></div>" +
+    "<div>latencia <b>" + datos.latency_ms.toFixed(1) + " ms</b></div>" +
+    "</div>";
+
+  if (!datos.items.length) {
+    html += "<p class='vacio'>No hay elementos que recomendar para este usuario.</p>";
+    salida.innerHTML = html;
+    return;
+  }
+
+  html += "<ol>";
+  for (const it of datos.items) {
+    html +=
+      "<li>" +
+        "<span class='puesto'>" + it.rank + "</span>" +
+        "<span class='cuerpo'>" +
+          "<span class='titulo'>" + escapar(it.title || ("Elemento " + it.item_id)) + "</span>" +
+          (it.categories && it.categories.length
+            ? "<div class='generos'>" + escapar(it.categories.join(" · ")) + "</div>"
+            : "") +
+        "</span>" +
+        "<span class='puntaje'>" + it.score.toFixed(3) + "</span>" +
+        "<button type='button' data-item='" + it.item_id + "'>Me interesa</button>" +
+      "</li>";
+  }
+  html += "</ol>";
+
+  salida.innerHTML = html;
+
+  salida.querySelectorAll("button[data-item]").forEach(function (boton) {
+    boton.addEventListener("click", function () {
+      registrarInteres(boton, parseInt(boton.dataset.item, 10));
+    });
+  });
+}
+
+async function recomendar(evento) {
+  if (evento) evento.preventDefault();
+  const usuario = parseInt(campoUsuario.value, 10);
+  const cantidad = parseInt(campoCantidad.value, 10);
+
+  botonEnviar.disabled = true;
+  salida.innerHTML = "<h2>Resultados</h2><p class='vacio'>Consultando…</p>";
+
+  try {
+    const r = await fetch("/recommendations/" + usuario + "?k=" + cantidad);
+    const cuerpo = await r.json();
+    if (!r.ok) {
+      pintarError(cuerpo.code || r.status, cuerpo.message || "La petición fue rechazada.", cuerpo.detail);
+    } else {
+      pintarRecomendaciones(cuerpo);
+    }
+  } catch (e) {
+    pintarError("sin_conexion", "No se pudo contactar al servicio.", String(e));
+  } finally {
+    botonEnviar.disabled = false;
+  }
+}
+
+// Publica la interacción en la cola. La respuesta es 202: el registro del
+// historial ocurre fuera del ciclo de la petición, así que la interfaz no
+// espera a que se persista.
+async function registrarInteres(boton, itemId) {
+  boton.disabled = true;
+  try {
+    const r = await fetch("/interactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: parseInt(campoUsuario.value, 10),
+        event_type: "click",
+        item_id: itemId
+      })
+    });
+    boton.textContent = r.ok ? "Registrado" : "No registrado";
+  } catch (e) {
+    boton.textContent = "No registrado";
+  }
+  boton.classList.add("listo");
+}
+
+document.getElementById("formulario").addEventListener("submit", recomendar);
+
+document.getElementById("azar").addEventListener("click", function () {
+  const tope = totalUsuarios || 100;
+  campoUsuario.value = 1 + Math.floor(Math.random() * tope);
+  recomendar();
+});
+
+consultarEstado();
+</script>
+
+</body>
+</html>

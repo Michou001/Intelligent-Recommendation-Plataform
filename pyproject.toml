@@ -44,6 +44,11 @@ py-modules = ["errors"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# The Presentation Layer page ships with the package, so an installed build
+# serves the same interface as a source checkout.
+[tool.setuptools.package-data]
+presentation = ["static/*"]
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]
