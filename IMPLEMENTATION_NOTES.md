@@ -281,6 +281,34 @@ python benchmarks/latency_p95.py --requests 1000 --json
   variant switch needs no code change — but only `ml-latest-small` was actually
   processed end to end.
 
+**Scoped out by the document itself:**
+
+- **Profile management over HTTP (part of FR-01).** FR-01 is a Must-have and
+  asks that a profile can be "created, viewed, and updated, including explicit
+  preferences (genres, favorite categories)". What Milestone 2 implements is
+  the persistence side: `IUserProfileRepository` and `SqlUserProfileRepository`
+  store and retrieve profiles with their `preferred_categories`, which is what
+  Table 11 traces to FR-01, and the controller consults the repository to
+  decide whether a user exists (the 404 of Table 10).
+
+  What is deliberately absent is the HTTP surface to create or edit a profile,
+  because Section 9.6 scopes the application workflow of this milestone to
+  "a single endpoint, `GET /recommendations/{user_id}?k=10`". Profiles are
+  therefore loaded from the materialised dataset by `python -m persistence
+  --seed`, not created by an end user.
+
+  The consequence is visible and worth stating plainly: `preferred_categories`
+  is stored but never read at inference time, so the category-restricted branch
+  of `PopularityStrategy` — which is implemented and tested — is currently only
+  reachable through the `preferred_category` column the offline pipeline
+  derives from a user's history, never through a preference the user declared.
+
+  Closing this is additive and touches no existing component: a `POST /users`
+  route in the application layer, and one branch in `RecommendationController`
+  that reads the declared preferences through `IUserProfileRepository` when the
+  feature store has no vectors for that user. Both sit behind interfaces that
+  already exist, which is the property the architecture was built for.
+
 **Mentioned as future extension, deliberately out of scope:**
 
 - `RateLimitingDecorator` and A/B testing (Sections 3.3, 3.5, 7) — cited in the
