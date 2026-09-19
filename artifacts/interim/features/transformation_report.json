@@ -1,0 +1,16 @@
+{
+  "stage": "transform",
+  "output_dir": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\artifacts\\interim\\features",
+  "matrix_shape": [
+    609,
+    7343
+  ],
+  "matrix_nnz": 61687,
+  "factorisation_backend": "implicit-als",
+  "latent_factors": 64,
+  "embedding_backend": "tfidf-svd",
+  "embedding_dimension": 64,
+  "users": 609,
+  "items": 7343,
+  "categories": 19
+}

@@ -1,0 +1,32 @@
+{
+  "stage": "clean",
+  "output_dir": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\artifacts\\interim\\clean",
+  "thresholds": {
+    "min_rating": 0.5,
+    "max_rating": 5.0,
+    "min_user_interactions": 5
+  },
+  "items": {
+    "rows_in": 9742,
+    "duplicates_removed": 0,
+    "null_metadata_removed": 0,
+    "no_genre_removed": 34,
+    "rows_out": 9690,
+    "unrated_items_removed": 18
+  },
+  "ratings": {
+    "rows_in": 100836,
+    "null_rows_removed": 0,
+    "duplicates_removed": 0,
+    "out_of_range_removed": 0,
+    "orphan_items_removed": 47,
+    "sparse_users_removed": 0,
+    "rows_out": 100789
+  },
+  "tags": {
+    "rows_in": 3683,
+    "rows_out": 3659
+  },
+  "distinct_users": 610,
+  "distinct_items": 9690
+}

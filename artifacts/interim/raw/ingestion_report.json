@@ -1,0 +1,34 @@
+{
+  "stage": "ingest",
+  "variant": "ml-latest-small",
+  "chunk_size": 50000,
+  "output_dir": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\artifacts\\interim\\raw",
+  "artifacts": {
+    "ratings": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\artifacts\\interim\\raw\\ratings.parquet",
+    "items": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\artifacts\\interim\\raw\\items.parquet",
+    "tags": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\artifacts\\interim\\raw\\tags.parquet"
+  },
+  "sources": {
+    "ratings": {
+      "file": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\datasets\\ml-latest-small\\ratings.csv",
+      "chunks": 3,
+      "rows_read": 100836,
+      "rows_rejected": 0,
+      "rows_kept": 100836
+    },
+    "items": {
+      "file": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\datasets\\ml-latest-small\\movies.csv",
+      "chunks": 1,
+      "rows_read": 9742,
+      "rows_rejected": 0,
+      "rows_kept": 9742
+    },
+    "tags": {
+      "file": "C:\\Users\\gonza\\Desktop\\Ingenieria de Software 11.1\\datasets\\ml-latest-small\\tags.csv",
+      "chunks": 1,
+      "rows_read": 3683,
+      "rows_rejected": 0,
+      "rows_kept": 3683
+    }
+  }
+}
