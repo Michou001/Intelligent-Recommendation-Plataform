@@ -124,9 +124,7 @@ class IRecommendationStrategy(ABC):
         return {"strategy_id": self.strategy_id, "model_version": self.model_version}
 
 
-def top_k(
-    scores: np.ndarray, item_ids: Sequence[ItemId] | np.ndarray, k: int
-) -> list[ScoredItem]:
+def top_k(scores: np.ndarray, item_ids: Sequence[ItemId] | np.ndarray, k: int) -> list[ScoredItem]:
     """Select the K highest scores without sorting the whole catalog.
 
     ``numpy.argpartition`` is linear in the number of items, against the
