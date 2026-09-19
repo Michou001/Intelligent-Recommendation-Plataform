@@ -18,7 +18,7 @@
 
 This platform implements a **Layered Architecture** following SOLID principles and GoF / ML design patterns, ensuring that the AI inference engine evolves independently from the business logic and persistence layers:
 
-1. **Presentation Layer (`src/presentation/`)**: Pydantic v2 schemas validating request/response contracts and enforcing *Fail-Fast* input validation (HTTP 400).
+1. **Presentation Layer (`src/presentation/`)**: Pydantic v2 schemas validating request/response contracts and enforcing *Fail-Fast* input validation (HTTP 400), plus a dependency-free web interface (`static/index.html`) that consumes the public endpoints and holds no business or AI logic.
 2. **Application Layer (`src/application/`)**: Orchestration via `RecommendationController`, real-time event ingestion via `InteractionIngestionService`, and REST API endpoints built with FastAPI.
 3. **AI & Recommendation Engine Layer (`src/ai/`)**:
    - **Strategy Pattern (`src/ai/strategies/`)**: Interchangeable recommendation models implementing `IRecommendationStrategy.predict(user_features)`:
@@ -54,7 +54,7 @@ pip install -e ".[dev,als,deep,content,cache,broker,nosql]"
 
 ### 2. Running Automated Tests
 
-Run the complete test suite (258 unit and integration tests):
+Run the complete test suite (264 unit and integration tests):
 
 ```bash
 python -m pytest
@@ -85,7 +85,8 @@ $env:PYTHONPATH="src"
 python -m uvicorn application.api:app --reload --port 8000
 ```
 
-Interactive API documentation will be available at:
+Once running, the following are available:
+- Web interface: [http://127.0.0.1:8000/](http://127.0.0.1:8000/) — query recommendations for any user, inspect the served model and latency, and register interactions
 - Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - ReDoc: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
@@ -97,6 +98,7 @@ Interactive API documentation will be available at:
 recommendation-platform/
 ├── src/
 │   ├── presentation/       # Layer 1: Request/response schemas (Pydantic v2)
+│   │   └── static/         #          Web interface served at /ui
 │   ├── application/        # Layer 2: Controller, Ingestion service, FastAPI routes
 │   ├── ai/                 # Layer 3: Interfaces, ModelFactory, Strategies & Decorators
 │   ├── data/               # Layer 4: Feature Store Manager & 4-stage offline pipeline
@@ -107,5 +109,6 @@ recommendation-platform/
 ├── benchmarks/             # Latency p95 benchmark replay script
 ├── datasets/               # MovieLens ml-latest-small source data
 ├── artifacts/              # Parquet feature store, SQLite DB, model weights & reports
+├── IMPLEMENTATION_NOTES.md # Component/file/status table, measured p95, deviations
 └── pyproject.toml          # Tooling configuration (ruff, mypy, pytest)
 ```
