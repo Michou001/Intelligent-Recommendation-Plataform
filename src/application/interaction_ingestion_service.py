@@ -13,6 +13,7 @@ the asynchronous path survive a momentary failure of the persistence layer.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -29,11 +30,21 @@ class InteractionIngestionService:
         event_queue: InteractionEventQueue,
         *,
         logger: Any | None = None,
+        observadores: Sequence[Callable[[InteractionRequest], None]] = (),
     ) -> None:
         self._event_queue = event_queue
         self._logger = logger
+        # Patrón Observer: quien necesite enterarse de cada interacción (por
+        # ejemplo el contador de tendencias) se suscribe aquí, sin que este
+        # servicio sepa qué hace con ella.
+        self._observadores = list(observadores)
 
     def ingest(self, request: InteractionRequest) -> InteractionAccepted:
+        for observador in self._observadores:
+            observador(request)
+        return self._publish(request)
+
+    def _publish(self, request: InteractionRequest) -> InteractionAccepted:
         """Publish one validated interaction event.
 
         The payload has already been validated against the schema by the

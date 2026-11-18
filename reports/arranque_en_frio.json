@@ -1,0 +1,53 @@
+{
+  "k": 10,
+  "usuarios": 592,
+  "peliculas_mostradas_en_registro": 48,
+  "promedio_elegidas": 9.84,
+  "usuarios_sin_elegidas": 29,
+  "estrategias": [
+    {
+      "clave": "popularidad_global",
+      "nombre": "Popularidad global (E3)",
+      "precision@10": 0.01,
+      "recall@10": 0.0071,
+      "f1@10": 0.0062,
+      "ndcg@10": 0.0194,
+      "hit@10": 0.0845,
+      "users": 592,
+      "catalog_coverage": 0.0012
+    },
+    {
+      "clave": "popularidad_genero",
+      "nombre": "Popularidad del género",
+      "precision@10": 0.0159,
+      "recall@10": 0.012,
+      "f1@10": 0.0107,
+      "ndcg@10": 0.0193,
+      "hit@10": 0.1267,
+      "users": 592,
+      "catalog_coverage": 0.0105
+    },
+    {
+      "clave": "contenido",
+      "nombre": "Contenido",
+      "precision@10": 0.0078,
+      "recall@10": 0.0101,
+      "f1@10": 0.0065,
+      "ndcg@10": 0.0111,
+      "hit@10": 0.076,
+      "users": 592,
+      "catalog_coverage": 0.0963
+    },
+    {
+      "clave": "als_fold_in",
+      "nombre": "ALS fold-in",
+      "precision@10": 0.0529,
+      "recall@10": 0.0514,
+      "f1@10": 0.0422,
+      "ndcg@10": 0.0666,
+      "hit@10": 0.348,
+      "users": 592,
+      "catalog_coverage": 0.0249
+    }
+  ]
+}

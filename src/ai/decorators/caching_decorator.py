@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import time
+import zlib
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from typing import Any
@@ -140,8 +141,20 @@ class CachingDecorator(StrategyDecorator):
         sharing a Redis instance (for example, replicas configured with
         different active strategies, or the active strategy and the fallback)
         never read each other's rankings.
+
+        Entrega final: también lleva una huella de las películas que ya vio el
+        usuario y su género preferido. Marcar o quitar un "me gusta" cambia sus
+        excluidas (con la sola cantidad, quitar una y marcar otra daría la misma
+        llave), y el registro pide la popularidad de varios géneros con el mismo
+        usuario anónimo; sin esto la caché devolvería un ranking viejo.
         """
-        return f"{KEY_PREFIX}:{self.strategy_id}:{user_features.user_id}:{k}:{self.model_version}"
+        huella = zlib.crc32(",".join(map(str, sorted(user_features.seen_items))).encode())
+        vistos = f"{len(user_features.seen_items)}-{huella:08x}"
+        genero = user_features.preferred_category or "-"
+        return (
+            f"{KEY_PREFIX}:{self.strategy_id}:{user_features.user_id}:vistos{vistos}"
+            f":{genero}:{k}:{self.model_version}"
+        )
 
     def predict(self, user_features: UserFeatures, k: int = 10) -> list[ScoredItem]:
         key = self.cache_key(user_features, k)

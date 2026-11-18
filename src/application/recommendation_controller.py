@@ -20,10 +20,16 @@ fallback, never an abrupt termination.
 from __future__ import annotations
 
 import time
+from collections import deque
 from typing import Any
 
-from ai.interfaces import IRecommendationStrategy, ScoredItem, UserFeatures
+import numpy as np
+
+from ai.interfaces import IEstrategiaConPerfil, IRecommendationStrategy, ScoredItem, UserFeatures
+from application.buscador import BuscadorPeliculas
+from application.catalogo_es import CatalogoEspanol
 from application.error_journal import ErrorJournal
+from application.tendencias import ContadorTendencias
 from config.settings import Settings, load_settings
 from data.feature_store_manager import FeatureStoreManager
 from errors import (
@@ -36,11 +42,27 @@ from errors import (
     UserNotFoundError,
 )
 from messaging.interaction_event_queue import InteractionEvent, InteractionEventQueue
-from persistence.interfaces import ICatalogRepository, IUserProfileRepository
+from persistence.interfaces import (
+    ICatalogRepository,
+    IInteractionHistoryRepository,
+    IUserProfileRepository,
+)
 from presentation.schemas import RecommendationResponse, RecommendedItem
 
 #: Event type published when a ranking is served (FR-06).
 SERVED_EVENT_TYPE = "recommendation_served"
+
+
+def _fase_de(features: UserFeatures | None, es_nuevo: bool) -> str:
+    """Qué tanto conoce el sistema al usuario (se muestra en la interfaz)."""
+    if features is None or features.is_cold_start:
+        return "arranque_en_frio"
+    return "calentamiento" if es_nuevo else "personalizado"
+
+
+#: Eventos que agregan o quitan una película de las que le gustan al usuario.
+ME_GUSTA = "me_gusta"
+YA_NO_ME_GUSTA = "ya_no_me_gusta"
 
 
 class RecommendationController:
@@ -59,7 +81,19 @@ class RecommendationController:
         logger: Any | None = None,
         startup_degradation_reason: str | None = None,
         error_journal: ErrorJournal | None = None,
+        history_repository: IInteractionHistoryRepository | None = None,
+        estrategia_calentamiento: IEstrategiaConPerfil | None = None,
+        catalogo_es: CatalogoEspanol | None = None,
+        tendencias: ContadorTendencias | None = None,
+        buscador: BuscadorPeliculas | None = None,
+        mas_vistas_por_genero: dict[str, list[int]] | None = None,
     ) -> None:
+        self._buscador = buscador
+        self._mas_vistas_por_genero = mas_vistas_por_genero or {}
+        self._historial = history_repository
+        self._calentamiento = estrategia_calentamiento
+        self._catalogo_es = catalogo_es or CatalogoEspanol()
+        self._tendencias = tendencias
         self._strategy = strategy
         self._feature_store = feature_store
         self._event_queue = event_queue
@@ -75,6 +109,9 @@ class RecommendationController:
         # it: otherwise the one case where the system is *persistently*
         # degraded would be the only one the client cannot see (NFR-05).
         self._startup_degradation_reason = startup_degradation_reason
+        # Latencias recientes de cada recomendación servida, sea del modelo
+        # principal o del fold-in de un usuario nuevo (la vista de métricas).
+        self._latencias: deque[float] = deque(maxlen=2048)
 
     @property
     def strategy(self) -> IRecommendationStrategy:
@@ -95,7 +132,8 @@ class RecommendationController:
         self._assert_user_exists(user_id)
 
         runtime_reason: str | None = None
-        features = self._load_features(user_id)
+        features, es_nuevo = self._load_features(user_id)
+        fase = _fase_de(features, es_nuevo)
         if features is None:
             runtime_reason = FeatureStoreUnavailableError.code
             features = UserFeatures(
@@ -106,7 +144,8 @@ class RecommendationController:
         elif features.is_cold_start:
             runtime_reason = ColdStartError.code
 
-        ranking, strategy_used, reason = self._rank(features, k, runtime_reason)
+        estrategia = self._calentamiento if fase == "calentamiento" else self._strategy
+        ranking, strategy_used, reason = self._rank(features, k, runtime_reason, estrategia)
         # A failure during this request takes precedence over the startup one,
         # because it is the more specific explanation of what the client got.
         degradation_reason = reason or self._startup_degradation_reason
@@ -132,10 +171,56 @@ class RecommendationController:
             degraded=degradation_reason is not None,
             degradation_reason=degradation_reason,
             latency_ms=round((time.perf_counter() - started) * 1000.0, 3),
+            fase=fase,
         )
 
+        self._latencias.append(response.latency_ms)
         self._publish_served_event(response)
         return response
+
+    def latencia_p95(self) -> float | None:
+        """p95 en milisegundos de las últimas recomendaciones, o None si no hay."""
+        if not self._latencias:
+            return None
+        return float(np.percentile(np.fromiter(self._latencias, dtype=np.float64), 95.0))
+
+    def tendencias(self, k: int) -> tuple[list[RecommendedItem], bool]:
+        """Top-k del momento y si viene de actividad en vivo.
+
+        Sin interacciones recientes (por ejemplo, recién arrancado el servidor)
+        se responde con la popularidad histórica, para no mostrar una fila vacía.
+        """
+        recientes = self._tendencias.top(k) if self._tendencias else []
+        if recientes:
+            ranking = [ScoredItem(item, float(puntos)) for item, puntos in recientes]
+            return self._enrich(ranking), True
+        fallback = self._resolve_fallback()
+        if fallback is None:
+            return [], False
+        anonimo = UserFeatures(user_id=0, is_cold_start=True)
+        return self._enrich(fallback.predict(anonimo, k)), False
+
+    def tendencias_por_sexo(self, k: int) -> dict[str, list[RecommendedItem]]:
+        if self._tendencias is None:
+            return {}
+        return {
+            sexo: self._enrich([ScoredItem(i, float(p)) for i, p in self._tendencias.top(k, sexo)])
+            for sexo in ("mujer", "hombre")
+        }
+
+    def peliculas_para_registro(self, generos: list[str]) -> list[RecommendedItem]:
+        """Las más vistas de cada género elegido, para que marque las que le gustaron.
+
+        Se muestran las más vistas y no las mejor calificadas porque la gente
+        reconoce más títulos: en la evaluación offline marcan casi el doble.
+        """
+        ids = [i for g in generos for i in self._mas_vistas_por_genero.get(g, [])]
+        return self._enrich([ScoredItem(i, 0.0) for i in dict.fromkeys(ids)])
+
+    def buscar(self, texto: str, k: int) -> list[RecommendedItem]:
+        if self._buscador is None:
+            return []
+        return self._enrich([ScoredItem(i, 0.0) for i in self._buscador.buscar(texto, k)])
 
     def _validate(self, user_id: int, k: int | None) -> int:
         """Fail Fast: reject an invalid request before any computation."""
@@ -160,30 +245,107 @@ class RecommendationController:
         if not known:
             raise UserNotFoundError(f"user {user_id} does not exist")
 
-    def _load_features(self, user_id: int) -> UserFeatures | None:
-        """Retrieve the precomputed vectors, or None when the store is down."""
+    def _load_features(self, user_id: int) -> tuple[UserFeatures | None, bool]:
+        """Retrieve the precomputed vectors, or None when the store is down.
+
+        El segundo valor indica si es un usuario nuevo (sin fila en el Feature Store).
+        """
         try:
-            return self._feature_store.get_user_features(user_id)
+            return self._feature_store.get_user_features(user_id), False
         except ColdStartError:
-            return UserFeatures(
-                user_id=user_id,
-                is_cold_start=True,
-                feature_store_version=self._safe_store_version(),
-            )
+            return self._caracteristicas_de_usuario_nuevo(user_id), True
         except FeatureStoreUnavailableError as exc:
             self._log("error", "feature_store.unavailable", user_id=user_id, detail=exc.detail)
-            return None
+            return None, False
         except Exception as exc:  # noqa: BLE001 - any storage failure degrades, never 500
             self._log("error", "feature_store.failed", user_id=user_id, error=str(exc))
-            return None
+            return None, False
+
+    def _caracteristicas_de_usuario_nuevo(self, user_id: int) -> UserFeatures:
+        """Lo que se sabe de un usuario que el pipeline offline todavía no procesó.
+
+        - Arranque en frío: no marcó ninguna película; se le recomienda lo más
+          popular del primer género que eligió al registrarse.
+        - Calentamiento: con las películas que eligió en el registro y sus
+          "me gusta" se calcula su vector latente con fold-in de ALS, sin
+          reentrenar. En la evaluación offline triplica la precisión de la
+          popularidad (reports/arranque_en_frio.json).
+        """
+        perfil = self._profiles.get_by_id(user_id) if self._profiles else None
+        generos = perfil.preferred_categories if perfil else ()
+        gustadas = self.peliculas_gustadas(user_id)
+        vector = None
+        if self._calentamiento is not None and gustadas:
+            vector = self._calentamiento.perfil_desde_peliculas(gustadas)
+        return UserFeatures(
+            user_id=user_id,
+            latent_factors=vector,
+            seen_items=tuple(gustadas),
+            preferred_category=generos[0] if generos else None,
+            is_cold_start=vector is None,
+            feature_store_version=self._safe_store_version(),
+        )
+
+    def peliculas_gustadas(self, user_id: int) -> list[int]:
+        """Las elegidas en el registro más los "me gusta", menos los que quitó.
+
+        Se recorre el historial en orden: un "ya_no_me_gusta" posterior quita la
+        película, y volver a marcarla la pone otra vez (al final, como la más
+        reciente).
+        """
+        perfil = self._profiles.get_by_id(user_id) if self._profiles else None
+        iniciales = (perfil.attributes.get("peliculas_iniciales", "") if perfil else "").split(",")
+        gustadas = dict.fromkeys(int(i) for i in iniciales if i)
+        if self._historial is not None:
+            try:
+                registros = self._historial.list_by_user(user_id, limit=500)
+            except Exception as exc:  # noqa: BLE001 - sin historial quedan las del registro
+                self._log("warning", "history.lookup_failed", user_id=user_id, error=str(exc))
+                registros = []
+            for registro in sorted(registros, key=lambda r: r.occurred_at):
+                if registro.item_id is None:
+                    continue
+                if registro.event_type in (ME_GUSTA, YA_NO_ME_GUSTA):
+                    gustadas.pop(registro.item_id, None)
+                if registro.event_type == ME_GUSTA:
+                    gustadas[registro.item_id] = None
+        return list(gustadas)
+
+    def parecidas(self, item_id: int, k: int) -> list[RecommendedItem]:
+        """Películas que suelen gustarle a quien le gustó esta.
+
+        Es el mismo fold-in de ALS de un usuario nuevo, pero con una sola
+        película: el vector resultante apunta a lo que comparte público con ella.
+        """
+        if self._calentamiento is None:
+            return []
+        vector = self._calentamiento.perfil_desde_peliculas([item_id])
+        if vector is None:
+            return []
+        perfil = UserFeatures(user_id=0, latent_factors=vector, seen_items=(item_id,))
+        return self._enrich(self._calentamiento.predict(perfil, k))
+
+    def ficha(self, item_id: int) -> RecommendedItem | None:
+        """Título, póster y datos en español de una película."""
+        fichas = self._enrich([ScoredItem(item_id, 0.0)])
+        return fichas[0] if fichas else None
+
+    def populares_de_genero(self, genero: str, k: int) -> list[RecommendedItem]:
+        ids = self._mas_vistas_por_genero.get(genero, [])[:k]
+        return self._enrich([ScoredItem(i, 0.0) for i in ids])
 
     def _rank(
-        self, features: UserFeatures, k: int, reason: str | None
+        self,
+        features: UserFeatures,
+        k: int,
+        reason: str | None,
+        estrategia: IRecommendationStrategy | None = None,
     ) -> tuple[list[ScoredItem], IRecommendationStrategy, str | None]:
         """Run the configured strategy, falling back on a degradable error."""
+        estrategia = estrategia or self._strategy
         if reason is None:
             try:
-                return self._strategy.predict(features, k), self._strategy, None
+                return estrategia.predict(features, k), estrategia, None
             except RecommendationPlatformError as exc:
                 if not exc.degradable:
                     raise
@@ -233,6 +395,7 @@ class RecommendationController:
                     score=entry.score,
                     title=title,
                     categories=categories,
+                    **self._catalogo_es.ficha(entry.item_id, title, categories),
                 )
             )
         return enriched

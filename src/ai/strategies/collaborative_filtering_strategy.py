@@ -11,17 +11,23 @@ this class only consumes its output, so the inference path never fits a model
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 
-from ai.interfaces import IRecommendationStrategy, ItemId, ScoredItem, UserFeatures, top_k
+from ai.interfaces import IEstrategiaConPerfil, ItemId, ScoredItem, UserFeatures, top_k
 from ai.model_factory import register_strategy
 from ai.strategies import load_feature_table
 from config.settings import Settings, load_settings
 from errors import ColdStartError, ModelUnavailableError
 
+#: Un "me gusta" equivale a una calificación de 4.5 (el entrenamiento usa la
+#: calificación como confianza de cada interacción positiva).
+CONFIANZA_ME_GUSTA = 4.5
+
 
 @register_strategy("als")
-class CollaborativeFilteringStrategy(IRecommendationStrategy):
+class CollaborativeFilteringStrategy(IEstrategiaConPerfil):
     """Implicit-feedback matrix factorisation served as a matrix product.
 
     Scoring is one dense ``(n_items, d) @ (d,)`` product followed by
@@ -35,10 +41,14 @@ class CollaborativeFilteringStrategy(IRecommendationStrategy):
         item_factors: np.ndarray,
         *,
         model_version: str = "unknown",
+        regularizacion: float = 0.05,
     ) -> None:
         self._item_ids = np.asarray(item_ids, dtype=np.int64)
         self._item_factors = np.ascontiguousarray(item_factors, dtype=np.float32)
         self._model_version = model_version
+        self._regularizacion = regularizacion
+        # YᵀY no depende del usuario: se calcula una vez para el fold-in.
+        self._yty = self._item_factors.T @ self._item_factors
         if self._item_factors.shape[0] != self._item_ids.shape[0]:
             raise ModelUnavailableError(
                 "item factors and item identifiers have different lengths",
@@ -59,7 +69,12 @@ class CollaborativeFilteringStrategy(IRecommendationStrategy):
         item_factors = np.vstack(
             [np.asarray(row, dtype=np.float32) for row in frame["latent_factors"]]
         )
-        return cls(item_ids, item_factors, model_version=settings.feature_store.version)
+        return cls(
+            item_ids,
+            item_factors,
+            model_version=settings.feature_store.version,
+            regularizacion=settings.pipeline.als_regularization,
+        )
 
     @property
     def dimension(self) -> int:
@@ -83,6 +98,29 @@ class CollaborativeFilteringStrategy(IRecommendationStrategy):
         scores = self._item_factors @ np.asarray(user_vector, dtype=np.float32)
         scores = _mask_seen(self._item_ids, scores, user_features.seen_items)
         return top_k(scores, self._item_ids, k)
+
+    def perfil_desde_peliculas(self, item_ids: Sequence[ItemId]) -> np.ndarray | None:
+        """Fold-in: vector latente de un usuario nuevo sin reentrenar el modelo.
+
+        Es el mismo paso que ALS hace para cada usuario durante el
+        entrenamiento, con los factores de las películas ya fijos:
+
+            u = (YᵀY + Yₛᵀ(c - 1)Yₛ + λI)⁻¹ · Yₛᵀc
+
+        Yₛ son los factores de las películas que le gustaron y c la confianza
+        de un "me gusta" (en el entrenamiento la confianza es la calificación).
+        """
+        filas = np.isin(self._item_ids, np.asarray(list(item_ids), dtype=np.int64))
+        if not filas.any():
+            return None
+        gustadas = self._item_factors[filas]
+        a = (
+            self._yty
+            + (CONFIANZA_ME_GUSTA - 1.0) * gustadas.T @ gustadas
+            + self._regularizacion * np.eye(self.dimension, dtype=np.float32)
+        )
+        b = CONFIANZA_ME_GUSTA * gustadas.sum(axis=0)
+        return np.linalg.solve(a, b).astype(np.float32)
 
     def __len__(self) -> int:
         return int(self._item_ids.size)

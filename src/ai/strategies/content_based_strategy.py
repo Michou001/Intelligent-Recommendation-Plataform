@@ -11,9 +11,11 @@ while serving a request.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 
-from ai.interfaces import IRecommendationStrategy, ItemId, ScoredItem, UserFeatures, top_k
+from ai.interfaces import IEstrategiaConPerfil, ItemId, ScoredItem, UserFeatures, top_k
 from ai.model_factory import register_strategy
 from ai.strategies import load_feature_table
 from config.settings import Settings, load_settings
@@ -21,7 +23,7 @@ from errors import ColdStartError, ModelUnavailableError
 
 
 @register_strategy("content")
-class ContentBasedStrategy(IRecommendationStrategy):
+class ContentBasedStrategy(IEstrategiaConPerfil):
     """Content-based ranking over precomputed item embeddings."""
 
     def __init__(
@@ -83,6 +85,14 @@ class ContentBasedStrategy(IRecommendationStrategy):
         scores = self._embeddings @ query
         scores = _mask_seen(self._item_ids, scores, user_features.seen_items)
         return top_k(scores, self._item_ids, k)
+
+    def perfil_desde_peliculas(self, item_ids: Sequence[ItemId]) -> np.ndarray | None:
+        """Promedio de los embeddings de esas películas: el mismo perfil que el
+        pipeline offline calcula con las calificaciones positivas."""
+        filas = np.isin(self._item_ids, np.asarray(list(item_ids), dtype=np.int64))
+        if not filas.any():
+            return None
+        return self._embeddings[filas].mean(axis=0)
 
     def __len__(self) -> int:
         return int(self._item_ids.size)

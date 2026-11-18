@@ -57,6 +57,15 @@ def test_a_different_user_is_a_different_key(
     assert stub_strategy.calls == 2
 
 
+def test_quitar_un_me_gusta_y_marcar_otro_cambia_la_llave(
+    decorated: CachingDecorator, stub_strategy: StubStrategy
+) -> None:
+    """Misma cantidad de vistas, distinto conjunto: no debe leerse el ranking viejo."""
+    decorated.predict(UserFeatures(user_id=7, seen_items=(1, 2)), 3)
+    decorated.predict(UserFeatures(user_id=7, seen_items=(1, 3)), 3)
+    assert stub_strategy.calls == 2
+
+
 def test_the_key_carries_the_model_version(
     decorated: CachingDecorator, user_features: UserFeatures
 ) -> None:

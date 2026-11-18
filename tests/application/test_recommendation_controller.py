@@ -70,6 +70,9 @@ class StubCatalog(ICatalogRepository):
     def save(self, item: CatalogItem) -> None:
         return None
 
+    def listar_titulos(self) -> dict[int, str]:
+        return {}
+
 
 class BrokenFeatureStore(FeatureStoreManager):
     def get_user_features(self, user_id: int) -> UserFeatures:

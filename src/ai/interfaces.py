@@ -124,6 +124,19 @@ class IRecommendationStrategy(ABC):
         return {"strategy_id": self.strategy_id, "model_version": self.model_version}
 
 
+class IEstrategiaConPerfil(IRecommendationStrategy):
+    """Estrategia que además puede armar un perfil de usuario en el momento.
+
+    La usa el controlador con usuarios nuevos: con unas cuantas películas que
+    les gustaron ya se puede recomendar por contenido, sin esperar a que el
+    pipeline offline reentrene y les calcule factores latentes.
+    """
+
+    @abstractmethod
+    def perfil_desde_peliculas(self, item_ids: Sequence[ItemId]) -> np.ndarray | None:
+        """Vector de perfil a partir de películas que le gustaron al usuario."""
+
+
 def top_k(scores: np.ndarray, item_ids: Sequence[ItemId] | np.ndarray, k: int) -> list[ScoredItem]:
     """Select the K highest scores without sorting the whole catalog.
 
@@ -147,6 +160,7 @@ def top_k(scores: np.ndarray, item_ids: Sequence[ItemId] | np.ndarray, k: int) -
 
 
 __all__ = [
+    "IEstrategiaConPerfil",
     "IRecommendationStrategy",
     "ItemId",
     "ScoredItem",
