@@ -121,7 +121,11 @@ jobs:
           docker run -d --name reco -p 8000:8000 "$IMAGE"
           for i in $(seq 1 60); do curl -fs http://127.0.0.1:8000/health && break; sleep 2; done
           curl -fs http://127.0.0.1:8000/health
-          curl -fs "http://127.0.0.1:8000/recommendations/1?k=5"
+          # the web interface and a public catalog route answer
+          curl -fs http://127.0.0.1:8000/ui/ > /dev/null
+          curl -fs "http://127.0.0.1:8000/peliculas/populares?genero=Comedy&k=5"
+          # since the final delivery recommendations need a session: without a token it must be 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8000/recommendations/1?k=5')" = "401"
           docker rm -f reco
       - name: Log in to GitHub Container Registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
