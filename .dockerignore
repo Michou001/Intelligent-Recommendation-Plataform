@@ -1,4 +1,5 @@
-# Keep the build context small: only src/, artifacts/ and pyproject.toml are copied.
+# Keep the build context small: only src/, artifacts/, pyproject.toml and the
+# few data files the web UI reads (listed with ! below) are copied.
 .git
 .github
 .venv
@@ -11,8 +12,11 @@ venv
 tests
 benchmarks
 docs
-reports
-datasets
+reports/*
+!reports/arranque_en_frio.json
+!reports/evaluation_report.json
+datasets/*
+!datasets/peliculas_es.csv
 k8s
 # Intermediate and regenerated artifacts are not needed to serve requests.
 artifacts/interim

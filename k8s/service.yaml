@@ -5,6 +5,10 @@ metadata:
   labels: {app: recommendation-platform}
 spec:
   type: ClusterIP
+  # Accounts (SQLite) and the live trends are kept per pod, so each client
+  # stays on the same replica. A real deployment would move them to a shared
+  # database and Redis.
+  sessionAffinity: ClientIP
   selector: {app: recommendation-platform, component: api}
   ports:
     - port: 80

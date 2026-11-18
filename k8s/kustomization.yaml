@@ -1,4 +1,8 @@
 # Apply everything with:  kubectl apply -k k8s/
+#
+# First create the session secret once, so every replica signs and checks
+# login tokens with the same key (it is never stored in the repository):
+#   kubectl create secret generic recommendation-jwt #     --from-literal=RECO_JWT_SECRETO="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

@@ -19,6 +19,12 @@ spec:
             - containerPort: 8000
           envFrom:
             - configMapRef: {name: recommendation-config}
+          env:
+            # Same session key in every replica; without it a token issued by
+            # one pod is rejected by the others. See kustomization.yaml.
+            - name: RECO_JWT_SECRETO
+              valueFrom:
+                secretKeyRef: {name: recommendation-jwt, key: RECO_JWT_SECRETO}
           # Measured in Milestone 3: one uvicorn worker holds ~190 MB RSS
           # (PyTorch + four strategies) and saturates about one CPU core.
           resources:

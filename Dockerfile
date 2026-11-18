@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# Intelligent Recommendation Platform - API image (Milestone 3).
+# Intelligent Recommendation Platform - API image (final delivery).
 #
 # Build:  docker build -t recommendation-platform .
 # Run:    docker run -p 8000:8000 recommendation-platform
@@ -38,6 +38,14 @@ print('\n'.join(d['dependencies'] + o['als'] + o['cache'] + o['broker'] + o['nos
 
 COPY src ./src
 COPY artifacts ./artifacts
+# Spanish titles/posters and the evaluation reports shown in the metrics view.
+COPY datasets/peliculas_es.csv ./datasets/
+COPY reports/arranque_en_frio.json reports/evaluation_report.json ./reports/
+
+# Accounts and the profiles of people who signed up in the demo (ids above the
+# 610 MovieLens users) are personal data: they must not ship inside the image.
+# The app recreates the empty accounts table on startup.
+RUN python -c "import sqlite3; c = sqlite3.connect('artifacts/platform.db'); c.execute('DROP TABLE IF EXISTS cuentas'); c.execute('DELETE FROM user_profiles WHERE user_id > 610'); c.commit()"
 
 # Writable runtime state goes to /app/data (mount a volume there to keep it).
 ENV PYTHONPATH=/app/src \
