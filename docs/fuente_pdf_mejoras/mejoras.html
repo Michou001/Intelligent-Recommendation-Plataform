@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Mejoras de la entrega final</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root { --tinta: #14181f; --texto: #2b313b; --suave: #667085; --linea: #dfe3e8; --acento: #c98a12; --fondo: #f6f7f9; --verde: #1f8f5f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 10.5pt/1.5 "Segoe UI", system-ui, sans-serif; color: var(--texto); }
+  h1, h2, h3 { color: var(--tinta); line-height: 1.2; }
+  h2 { font-size: 16pt; margin: 0 0 10px; padding-top: 4px; border-top: 3px solid var(--acento); padding-top: 10px; }
+  h3 { font-size: 11.5pt; margin: 12px 0 5px; }
+  p { margin: 0 0 8px; }
+  section { break-before: page; }
+  .portada { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .portada .marca { font-weight: 700; font-size: 12pt; letter-spacing: .02em; }
+  .portada .marca span { color: var(--acento); }
+  .portada h1 { font-size: 30pt; margin: 0 0 14px; }
+  .portada .sub { font-size: 13pt; color: var(--suave); max-width: 140mm; }
+  .portada .datos { border-top: 1px solid var(--linea); padding-top: 12px; color: var(--suave); font-size: 10pt; }
+  .cifras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0 18px; }
+  .cifra { background: var(--fondo); border-radius: 8px; padding: 10px 12px; }
+  .cifra strong { display: block; font-size: 19pt; color: var(--tinta); line-height: 1.1; }
+  .cifra span { font-size: 8.5pt; color: var(--suave); }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 9.2pt; }
+  th { text-align: left; background: var(--fondo); color: var(--tinta); font-weight: 600; }
+  th, td { padding: 5px 7px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr.destacado td { background: #fff6e2; font-weight: 600; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 8.8pt; background: var(--fondo); padding: 0 3px; border-radius: 3px; }
+  .formula { font-family: Consolas, monospace; background: var(--fondo); padding: 8px 12px; border-radius: 6px; margin: 6px 0 10px; font-size: 10pt; }
+  .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  figure { margin: 0 0 10px; }
+  figure img { width: 100%; height: 66mm; object-fit: cover; object-position: left top; border: 1px solid var(--linea); border-radius: 6px; display: block; }
+  figcaption { font-size: 8.5pt; color: var(--suave); margin-top: 4px; }
+  .nota { font-size: 9pt; color: var(--suave); }
+  .aviso { border-left: 3px solid var(--acento); background: #fff9ec; padding: 8px 12px; margin: 8px 0 12px; font-size: 9.5pt; }
+  ul { margin: 0 0 10px; padding-left: 18px; }
+  li { margin-bottom: 3px; }
+  .capas { display: grid; gap: 6px; margin: 8px 0 12px; }
+  .capa { display: grid; grid-template-columns: 34mm 1fr; border: 1px solid var(--linea); border-radius: 6px; overflow: hidden; font-size: 9pt; }
+  .capa b { background: var(--fondo); padding: 6px 8px; color: var(--tinta); }
+  .capa div { padding: 6px 8px; }
+  .nuevo { color: var(--verde); font-weight: 600; }
+  .lado { display: grid; grid-template-columns: 1fr 64mm; gap: 14px; align-items: start; }
+  .lado img { height: auto; }
+</style>
+</head>
+<body>
+
+<div class="portada">
+  <div class="marca">Cartelera <span>Inteligente</span> · Plataforma de Recomendación Inteligente</div>
+  <div>
+    <h1>Mejoras de la entrega final respecto a la entrega 3</h1>
+    <p class="sub">Qué se construyó sobre la arquitectura del Milestone 3, cómo se midió y en qué archivos está cada cambio.</p>
+  </div>
+  <div class="datos">
+    Ingeniería de Software II · Equipo 4 · Ingeniería en Inteligencia Artificial, UAEMex<br>
+    31 de octubre de 2026, actualizado el 16 de noviembre de 2026 · Copia de trabajo: <code>Ingenieria de Software II\Entrega Final\Plataforma de Recomendacion</code>
+  </div>
+</div>
+
+<section>
+  <h2>1. Resumen</h2>
+  <p>La entrega 3 dejó un backend completo (arquitectura en capas, cuatro estrategias de recomendación, Feature Store, cola de eventos, CI con 292 pruebas) y una página mínima para consultar recomendaciones con un número de usuario. La entrega final construye sobre ese núcleo la aplicación que usaría una persona: cuentas con seguridad (correo único y verificación en dos pasos), registro que evita el arranque en frío, carteles y fichas en español, buscador, tendencias en vivo entre varias máquinas y una vista de métricas.</p>
+  <p>No se reescribió el núcleo: lo nuevo se conecta por las mismas interfaces, y la prueba automática de la regla de importación entre capas sigue pasando.</p>
+  <div class="cifras">
+    <div class="cifra"><strong>5.3×</strong><span>precisión de las primeras recomendaciones de un usuario nuevo (0.0100 → 0.0529)</span></div>
+    <div class="cifra"><strong>34.8 %</strong><span>de usuarios nuevos con al menos un acierto en su top 10 (antes 8.5 %)</span></div>
+    <div class="cifra"><strong>365</strong><span>pruebas automáticas (292 de la entrega 3 + 73 nuevas); pasan 364 y se omite 1</span></div>
+    <div class="cifra"><strong>26 / 29</strong><span>archivos nuevos / archivos modificados</span></div>
+  </div>
+
+  <h3>Lo que pidió la profesora y cómo se resolvió</h3>
+  <table>
+    <tr><th>Petición</th><th>Solución</th></tr>
+    <tr><td>Presentación para autenticar</td><td>Pantalla de inicio de sesión y registro; sesión con token JWT que expira.</td></tr>
+    <tr><td>Medidas de seguridad</td><td>Contraseñas con hash scrypt, bloqueo por intentos fallidos, autorización por usuario, encabezados de seguridad (sección 7).</td></tr>
+    <tr><td>Pantalla que se vea bien, mejorar interfaz</td><td>Interfaz nueva en español: portada destacada, carteles de TMDB, filas "Para ti", "Porque te gustó…" y por género, ficha con sinopsis y explicación, "me gusta" que se puede quitar, diseño adaptable a celular.</td></tr>
+    <tr><td>La consulta</td><td>Recomendaciones del usuario de la sesión, buscador de películas por título en español o inglés.</td></tr>
+    <tr><td>Gráficas de las métricas</td><td>Vista de métricas: calidad por estrategia, aciertos por historial, arranque en frío, popularidad por sexo, interacciones por minuto.</td></tr>
+    <tr><td>Usuario de arranque en frío que parte de cero</td><td>Registro en dos pasos y <i>fold-in</i> de ALS; fases visibles: arranque en frío → calentamiento → personalizado (sección 4).</td></tr>
+    <tr><td>Top del momento por popularidad</td><td>"Lo más popular ahora": ventana deslizante de 30 minutos con las interacciones de todos los usuarios conectados.</td></tr>
+    <tr><td>Películas más populares entre hombres y mujeres</td><td>Top por sexo con los usuarios de la plataforma; MovieLens no trae ese dato (sección 5).</td></tr>
+    <tr><td>Registro más completo, resultados iniciales más precisos</td><td>Datos, sexo opcional, 1 a 3 géneros y películas vistas; precisión inicial medida offline (sección 4).</td></tr>
+    <tr><td>2 o 3 máquinas al mismo tiempo</td><td>Un servidor en la red local; las demás máquinas solo abren el navegador. También se puede abrir desde fuera con un túnel gratuito (sección 6).</td></tr>
+    <tr><td>Correo en el registro y verificación en dos pasos (sugerencia del equipo)</td><td>Correo único por cuenta; verificación en dos pasos opcional con TOTP, QR y códigos de respaldo (sección 7).</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. Antes y después</h2>
+  <div class="dos">
+    <figure><img src="img/antes.png"><figcaption>Entrega 3: formulario con número de usuario y lista de resultados (captura sin servidor, por eso dice "no disponible").</figcaption></figure>
+    <figure><img src="img/acceso.jpg"><figcaption>Entrega final: pantalla de acceso; se entra solo con el correo.</figcaption></figure>
+  </div>
+  <div class="dos">
+    <figure><img src="img/registro.jpg"><figcaption>Registro, paso 2: el usuario marca las películas que vio y le gustaron (las más vistas de sus géneros).</figcaption></figure>
+    <figure><img src="img/inicio.jpg"><figcaption>Inicio justo después de registrarse: ya está en calentamiento, con recomendaciones de ALS calculadas con sus 4 elecciones.</figcaption></figure>
+  </div>
+  <div class="dos">
+    <figure><img src="img/busqueda.jpg"><figcaption>Buscador: encuentra por título en español o inglés, sin importar acentos.</figcaption></figure>
+    <figure><img src="img/metricas.jpg"><figcaption>Métricas: arranque en frío y popularidad por sexo, además de interacciones por minuto de todas las máquinas.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>3. Dónde vive lo nuevo en la arquitectura</h2>
+  <p>Se respetó la arquitectura en capas de la entrega 3. En verde, los módulos nuevos; el resto son cambios pequeños a módulos existentes.</p>
+  <div class="capas">
+    <div class="capa"><b>Presentación</b><div><span class="nuevo">app.js, metricas.js, estilos.css</span>; <code>index.html</code> rehecho, con el diálogo de Seguridad; nuevos esquemas en <code>schemas.py</code> (registro, sesión, tendencias, campos en español).</div></div>
+    <div class="capa"><b>Aplicación</b><div><span class="nuevo">autenticacion.py, doble_factor.py, tendencias.py, buscador.py, catalogo_es.py, metricas.py, cuenta_demo.py</span>; rutas nuevas y composición en <code>api.py</code>; fases del usuario en <code>recommendation_controller.py</code>; observadores en la ingesta.</div></div>
+    <div class="capa"><b>IA</b><div>Fold-in en <code>collaborative_filtering_strategy.py</code>; interfaz <code>IEstrategiaConPerfil</code>; llave de caché corregida.</div></div>
+    <div class="capa"><b>Datos</b><div><span class="nuevo">enriquecer_tmdb.py</span>: etapa opcional del pipeline que trae títulos, sinopsis y pósters.</div></div>
+    <div class="capa"><b>Persistencia</b><div>Tabla <code>cuentas</code> (con correo único y datos de TOTP, y migración automática de bases viejas), <span class="nuevo">sql_repositorio_cuentas.py</span> e interfaz <code>IRepositorioCuentas</code>; <code>listar_titulos</code> en el catálogo.</div></div>
+  </div>
+  <h3>Patrones de diseño que se agregaron</h3>
+  <ul>
+    <li><b>Observer:</b> la ingesta de interacciones avisa a sus observadores; el contador de tendencias se suscribe sin que la ingesta sepa qué hace con cada evento.</li>
+    <li><b>Segregación de interfaces:</b> <code>IEstrategiaConPerfil</code> extiende la interfaz de estrategia solo para las que saben armar un perfil en vivo.</li>
+    <li><b>Repositorio:</b> las cuentas siguen el mismo esquema interfaz + adaptador SQL que los repositorios de la entrega 3.</li>
+    <li><b>Raíz de composición:</b> todo se conecta en <code>api.py</code>; el comando de cuenta demo se declaró como segunda raíz en la prueba de arquitectura.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>4. Usuario nuevo: registro y fold-in de ALS</h2>
+  <p>ALS necesita el historial de un usuario para calcularle su vector latente. En la entrega 3, un usuario sin historial recibía la popularidad global, igual para todos.</p>
+  <h3>Registro en dos pasos</h3>
+  <p>Paso 1: usuario, correo, contraseña, sexo (opcional) y de 1 a 3 géneros. Paso 2: se muestran las 16 películas <b>más vistas</b> de cada género y el usuario marca las que vio y le gustaron. Las elegidas se guardan en su perfil, así que sirven desde la primera petición.</p>
+  <h3>Fold-in de ALS</h3>
+  <p>Con esas películas se calcula el vector del usuario con el mismo paso de mínimos cuadrados que ALS hace para cada usuario al entrenar, dejando fijos los factores de las películas:</p>
+  <div class="formula">u = (YᵀY + Yₛᵀ(c − 1)Yₛ + λI)⁻¹ · Yₛᵀc</div>
+  <p class="nota">Yₛ: factores de las películas elegidas · c = 4.5: confianza de un "me gusta" (al entrenar la confianza es la calificación) · λ: regularización del modelo · YᵀY se calcula una vez al arrancar. Es resolver un sistema de 64×64, sin reentrenar.</p>
+  <h3>Cómo se midió</h3>
+  <p>Script nuevo <code>benchmarks/evaluar_arranque_en_frio.py</code>, sobre la misma división temporal de la entrega 3. Cada uno de los 592 usuarios evaluables se trata como si se registrara: elige sus 3 géneros más frecuentes y marca, de las 48 películas que le mostraría el registro, las que calificó bien <b>antes</b> del corte. Con eso se le recomiendan 10 y se comparan con lo que calificó bien <b>después</b>. No hay fuga de datos.</p>
+  <table>
+    <tr><th>Estrategia para un usuario nuevo</th><th class="n">precision@10</th><th class="n">recall@10</th><th class="n">NDCG@10</th><th class="n">hit@10</th></tr>
+    <tr><td>Popularidad global (entrega 3)</td><td class="n">0.0100</td><td class="n">0.0071</td><td class="n">0.0194</td><td class="n">8.5 %</td></tr>
+    <tr><td>Popularidad del género elegido</td><td class="n">0.0159</td><td class="n">0.0120</td><td class="n">0.0193</td><td class="n">12.7 %</td></tr>
+    <tr><td>Contenido con las elegidas</td><td class="n">0.0078</td><td class="n">0.0101</td><td class="n">0.0111</td><td class="n">7.6 %</td></tr>
+    <tr class="destacado"><td>ALS fold-in con las elegidas (entrega final)</td><td class="n">0.0529</td><td class="n">0.0514</td><td class="n">0.0666</td><td class="n">34.8 %</td></tr>
+  </table>
+  <svg viewBox="0 0 520 150" width="56%" role="img" aria-label="Aciertos hit@10 por estrategia">
+    <g font-family="Segoe UI, sans-serif" font-size="11" fill="#2b313b">
+      <text x="0" y="12" font-weight="600">Usuarios nuevos con al menos un acierto en su top 10</text>
+      <text x="0" y="42">Popularidad global (E3)</text><rect x="170" y="31" width="73" height="16" rx="3" fill="#c9ced6"/><text x="249" y="43">8.5 %</text>
+      <text x="0" y="72">Popularidad del género</text><rect x="170" y="61" width="110" height="16" rx="3" fill="#c9ced6"/><text x="286" y="73">12.7 %</text>
+      <text x="0" y="102">Contenido</text><rect x="170" y="91" width="66" height="16" rx="3" fill="#c9ced6"/><text x="242" y="103">7.6 %</text>
+      <text x="0" y="132" font-weight="600">ALS fold-in</text><rect x="170" y="121" width="302" height="16" rx="3" fill="#c98a12"/><text x="478" y="133" font-weight="600">34.8 %</text>
+    </g>
+  </svg>
+  <h3>Decisiones que salieron de medir</h3>
+  <ul>
+    <li>La primera versión del calentamiento usaba recomendación por contenido. La medición mostró que era peor que la popularidad del género, y se cambió a fold-in de ALS.</li>
+    <li>Mostrar las películas <b>más vistas</b> en el registro, en lugar de las mejor calificadas, sube las elegidas de 5.8 a 9.8 en promedio y la precisión de 0.0443 a 0.0529.</li>
+    <li>Con 3 géneros × 16 películas se obtuvo la mejor precisión entre las variantes probadas (2×12, 3×12, 2×20, 3×16).</li>
+    <li>Referencia: ALS con todo el historial logra 0.0865 de precision@10. Un usuario nuevo, con unas 10 películas elegidas, ya alcanza el 61 % de esa cifra.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>5. Popularidad por sexo</h2>
+  <div class="aviso">MovieLens <code>ml-latest-small</code> no contiene datos demográficos. Su README lo indica: <i>"No demographic information is included"</i>. No es posible calcular lo más popular entre hombres y mujeres con el histórico del dataset.</div>
+  <p>Solución implementada: el registro pide el sexo como dato <b>opcional</b> ("Prefiero no decirlo" es la opción por defecto), explicando que solo se usa para esta estadística. El contador de tendencias guarda el sexo de quien interactúa, y la vista de métricas muestra el top de los últimos minutos para mujeres y para hombres. El dato solo se guarda en el perfil y solo se muestra agregado.</p>
+  <p>Alternativa descartada: cambiar a MovieLens 1M, que sí trae sexo y edad. Implicaría reentrenar todos los modelos y repetir la evaluación, y ese dataset no trae el id de TMDB, por lo que se perderían los pósters y títulos en español.</p>
+
+  <h2 style="margin-top:22px">6. Demo en varias máquinas</h2>
+  <p>Una máquina corre <code>python -m application.server</code>, que imprime la dirección para las demás (por ejemplo <code>http://192.168.1.11:8000/ui/</code>). Las otras solo abren el navegador: no instalan nada. Lo que una marca aparece en "Lo más popular ahora" de las demás en menos de 10 segundos, y la vista de métricas muestra usuarios activos e interacciones por minuto de todas. Para la red se recomienda el hotspot de un celular, porque el WiFi universitario suele aislar los dispositivos.</p>
+  <h3>Abrirla desde fuera de la red</h3>
+  <p>El script nuevo <code>iniciar_demo.ps1</code> levanta el servidor y un túnel gratuito de Cloudflare, que da una dirección pública <code>https://….trycloudflare.com</code>. Así se puede abrir desde cualquier celular con datos. La laptop sigue siendo el servidor, con los mismos modelos y la misma base de datos. Se eligió en lugar de Render porque el plan gratuito de Render apaga el servidor cuando no se usa y tarda en despertar, justo lo que no queremos en la presentación. La dirección cambia cada vez que se inicia el túnel.</p>
+</section>
+
+<section>
+  <h2>7. Seguridad</h2>
+  <table>
+    <tr><th>Medida</th><th>Detalle</th></tr>
+    <tr><td>Contraseñas <span class="nuevo">(nuevo)</span></td><td>8+ caracteres con mayúscula, número y símbolo, sin espacios ni guiones; se escribe dos veces al registrarse. Se guardan como hash scrypt con sal (parámetros de OWASP), nunca en claro.</td></tr>
+    <tr><td>Comparación segura</td><td>Tiempo constante (<code>hmac.compare_digest</code>); si el usuario no existe se compara contra un hash de relleno para no revelar qué usuarios existen.</td></tr>
+    <tr><td>Correo único <span class="nuevo">(nuevo)</span></td><td>El registro pide correo y lo guarda en minúsculas; un índice único en la base impide repetirlo. Se confirma con un código de 6 dígitos que llega al correo; sin confirmarlo no se puede entrar. Se inicia sesión solo con el correo.</td></tr>
+    <tr><td>Verificación en dos pasos <span class="nuevo">(nuevo)</span></td><td>Opcional, con TOTP (RFC 6238), la misma que usan Google y Microsoft Authenticator. Se explica abajo.</td></tr>
+    <tr><td>Fuerza bruta</td><td>Bloqueo de 60 s tras 5 intentos fallidos. Los códigos de verificación equivocados también cuentan.</td></tr>
+    <tr><td>Sesión</td><td>JWT firmado (HS256) que expira a los 60 minutos; secreto por variable de entorno o generado al arrancar. El campo <code>typ</code> separa el token de sesión del token temporal del segundo paso.</td></tr>
+    <tr><td>Autorización</td><td>Cada usuario solo puede pedir sus recomendaciones y registrar eventos a su nombre (401 sin token, 403 con token ajeno).</td></tr>
+    <tr><td>Navegador</td><td><code>Content-Security-Policy</code> estricta, <code>X-Frame-Options: DENY</code>, <code>X-Content-Type-Options</code>, <code>Referrer-Policy</code>.</td></tr>
+    <tr><td>Entradas</td><td>Validación con Pydantic (usuario, correo, contraseña, géneros, sexo, películas y código) y errores en español sin detalles internos.</td></tr>
+    <tr><td>Privacidad <span class="nuevo">(nuevo)</span></td><td>Aviso de privacidad (LFPDPPP 2025) y opción para eliminar la cuenta. La imagen Docker ya no incluye cuentas. Al arrancar, la base agrega sola las columnas nuevas.</td></tr>
+  </table>
+
+  <h3>Cómo funciona la verificación en dos pasos</h3>
+  <div class="lado">
+    <div>
+  <p>El servidor y la app del celular comparten un secreto aleatorio de 160 bits. Cada 30 segundos los dos calculan el mismo código de 6 dígitos con ese secreto y la hora. Si el código coincide, la persona demuestra que tiene su celular, sin enviar SMS ni correos.</p>
+  <ul>
+    <li><b>Activarla:</b> en el botón <i>Seguridad</i> el servidor genera el secreto y el QR (con la librería <code>segno</code>, sin scripts externos). Se escanea con la app y se confirma con el primer código. Al final se muestran 8 códigos de respaldo de un solo uso, que se guardan como hash SHA-256.</li>
+    <li><b>Entrar:</b> si la contraseña es correcta, el servidor no da la sesión todavía. Da un token temporal de 5 minutos que solo sirve para el segundo paso, y pide el código de la app o uno de respaldo.</li>
+    <li><b>Protecciones:</b> se aceptan ±30 s de diferencia en el reloj del celular, un código ya usado no se acepta otra vez y desactivar la verificación también pide un código.</li>
+  </ul>
+    </div>
+    <figure><img src="img/seguridad.jpg"><figcaption>Activación desde el botón Seguridad: QR y clave para escribirla a mano.</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>8. Archivos nuevos</h2>
+  <table>
+    <tr><th>Archivo</th><th class="n">Líneas</th><th>Qué hace</th></tr>
+    <tr><td><code>src/application/autenticacion.py</code></td><td class="n">331</td><td>Registro con código de correo, sesión, bloqueo, dos pasos y eliminar cuenta.</td></tr>
+    <tr><td><code>src/application/correo.py</code></td><td class="n">77</td><td>Envío del código de confirmación por SMTP (o al buzón local en desarrollo).</td></tr>
+    <tr><td><code>src/application/doble_factor.py</code></td><td class="n">80</td><td>TOTP: secreto, QR, códigos de respaldo y verificación que no acepta un código dos veces.</td></tr>
+    <tr><td><code>src/application/tendencias.py</code></td><td class="n">78</td><td>Top del momento en ventana deslizante, por sexo, e interacciones por minuto.</td></tr>
+    <tr><td><code>src/application/buscador.py</code></td><td class="n">50</td><td>Índice de títulos (original y español) sin acentos, ordenado por popularidad.</td></tr>
+    <tr><td><code>src/application/catalogo_es.py</code></td><td class="n">91</td><td>Fichas en español: título, año, géneros traducidos, póster y sinopsis.</td></tr>
+    <tr><td><code>src/application/metricas.py</code></td><td class="n">56</td><td>Resume los reportes de evaluación para las gráficas.</td></tr>
+    <tr><td><code>src/application/cuenta_demo.py</code></td><td class="n">50</td><td>Crea una cuenta ligada a un usuario de MovieLens para mostrar la fase personalizada.</td></tr>
+    <tr><td><code>src/persistence/sql_repositorio_cuentas.py</code></td><td class="n">102</td><td>Cuentas en SQL sin choques de ids ni usuarios o correos repetidos.</td></tr>
+    <tr><td><code>src/data/pipeline/enriquecer_tmdb.py</code></td><td class="n">114</td><td>Títulos, sinopsis y pósters de TMDB (etapa opcional).</td></tr>
+    <tr><td><code>src/presentation/static/app.js</code></td><td class="n">498</td><td>Cliente web: acceso, registro con código, inicio, ficha, buscador y Seguridad.</td></tr>
+    <tr><td><code>src/presentation/static/metricas.js</code></td><td class="n">105</td><td>Vista de métricas con Chart.js.</td></tr>
+    <tr><td><code>src/presentation/static/estilos.css</code></td><td class="n">333</td><td>Diseño de la interfaz, adaptable a celular.</td></tr>
+    <tr><td><code>benchmarks/evaluar_arranque_en_frio.py</code></td><td class="n">133</td><td>Evaluación offline del arranque en frío (sección 4).</td></tr>
+    <tr><td><code>reports/arranque_en_frio.json</code></td><td class="n">52</td><td>Resultado de esa evaluación; lo grafica la vista de métricas.</td></tr>
+    <tr><td><code>datasets/peliculas_es.csv</code></td><td class="n">9 734 filas</td><td>Datos de TMDB generados por el script.</td></tr>
+    <tr><td><code>docs/ENTREGA_FINAL.md</code></td><td class="n">153</td><td>Guía técnica: cómo funciona, cómo correrlo, decisiones.</td></tr>
+    <tr><td><code>src/presentation/static/privacidad.html</code></td><td class="n">68</td><td>Aviso de privacidad: datos, finalidades, derechos ARCO y ley aplicable.</td></tr>
+    <tr><td><code>iniciar_demo.ps1</code></td><td class="n">44</td><td>Levanta el servidor y el túnel de Cloudflare para abrir la app desde fuera de la red.</td></tr>
+    <tr><td><code>tests/application/test_*.py</code> (7 archivos)</td><td class="n">879</td><td>Autenticación, correo, dos pasos, tendencias, catálogo, buscador y fases.</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>9. Archivos modificados</h2>
+  <table>
+    <tr><th>Archivo</th><th class="n">+ / −</th><th>Cambio</th></tr>
+    <tr><td><code>src/application/api.py</code></td><td class="n">+357 / −4</td><td>Rutas nuevas (cuentas, géneros, registro, confirmar correo, verificación en dos pasos, eliminar cuenta, buscador, tendencias, métricas), autorización, encabezados de seguridad y composición de lo nuevo.</td></tr>
+    <tr><td><code>src/application/recommendation_controller.py</code></td><td class="n">+140 / −16</td><td>Fases del usuario, latencia de todas las recomendaciones, fold-in para usuarios nuevos, tendencias, búsqueda y fichas en español.</td></tr>
+    <tr><td><code>src/presentation/static/index.html</code></td><td class="n">+219 / −361</td><td>Interfaz rehecha (incluye correo y diálogo de Seguridad); estilos y lógica pasaron a archivos propios.</td></tr>
+    <tr><td><code>src/presentation/schemas.py</code></td><td class="n">+129 / −1</td><td>Esquemas de registro (con validación de correo), sesión, segundo paso, géneros, tendencias; campos en español y fase.</td></tr>
+    <tr><td><code>src/ai/strategies/collaborative_filtering_strategy.py</code></td><td class="n">+41 / −3</td><td>Fold-in de ALS.</td></tr>
+    <tr><td><code>src/errors.py</code></td><td class="n">+69</td><td>Errores de cuentas, correo repetido o sin confirmar, código inválido y sesión, con mensajes en español.</td></tr>
+    <tr><td><code>src/config/settings.py</code></td><td class="n">+49</td><td>Configuración de sesiones, correo (SMTP), tendencias, catálogo y reportes.</td></tr>
+    <tr><td><code>src/persistence/interfaces.py</code>, <code>__init__.py</code>, <code>sql_catalog_repository.py</code></td><td class="n">+123</td><td>Interfaz y tabla de cuentas (correo único y confirmado, datos de TOTP, migración de columnas); listado de títulos.</td></tr>
+    <tr><td><code>src/ai/interfaces.py</code>, <code>content_based_strategy.py</code></td><td class="n">+26 / −2</td><td>Interfaz <code>IEstrategiaConPerfil</code>; perfil por contenido (usado en la comparación).</td></tr>
+    <tr><td><code>src/ai/decorators/caching_decorator.py</code></td><td class="n">+11 / −1</td><td>Llave de caché con películas vistas y género (corrige resultados viejos).</td></tr>
+    <tr><td><code>src/application/server.py</code>, <code>interaction_ingestion_service.py</code></td><td class="n">+32</td><td>IP para otras máquinas; secreto de sesión común a los procesos; observadores.</td></tr>
+    <tr><td><code>tests/</code> (6 archivos existentes)</td><td class="n">+137 / −8</td><td>Pruebas de sistema y del servidor; ajuste de la prueba de arquitectura.</td></tr>
+    <tr><td><code>Dockerfile</code>, <code>.dockerignore</code>, <code>k8s/</code>, <code>pyproject.toml</code>, <code>README.md</code>, <code>.gitignore</code></td><td class="n">+37 / −4</td><td>Imagen sin datos de la demo; Secret de sesión en Kubernetes; PyJWT, pyotp y segno.</td></tr>
+  </table>
+
+</section>
+
+<section>
+  <h2>10. Calidad</h2>
+  <ul>
+    <li><b>Pruebas:</b> 365 en total; pasan 364 y se omite 1 (la del modelo neuronal, porque <code>torch</code> es opcional y no está instalado). Incluyen pruebas con el servidor real: sin token 401, token ajeno 403, usuario nuevo que mueve las tendencias, registro con películas que entra directo a calentamiento. Las de verificación en dos pasos cubren correo repetido, entrar con correo, código reutilizado, códigos de respaldo, confirmación del correo con código, eliminar la cuenta, bloqueo por códigos equivocados y migración de una base vieja.</li>
+    <li><b>Lint y tipos:</b> ruff, black y mypy sin errores en los 52 módulos.</li>
+    <li><b>Arquitectura:</b> la prueba de la regla de importación entre capas sigue pasando.</li>
+    <li><b>Despliegues:</b> imagen Docker, perfil completo de Docker Compose (Redis, RabbitMQ, MongoDB y worker) y Kubernetes local con 2 réplicas, probados el 16 de noviembre. Al probar con 2 procesos apareció un error de sesión (cada proceso tenía su propio secreto) y se corrigió.</li>
+    <li><b>Verificación manual:</b> registro, fases, búsqueda, ficha, métricas y vista en celular revisados en el navegador. También registro con correo, activación de la verificación en dos pasos y entrada con código de la app y con código de respaldo.</li>
+  </ul>
+
+  <h2 style="margin-top:22px">11. Limitaciones y pendientes</h2>
+  <ul>
+    <li>La popularidad por sexo depende de los usuarios de la plataforma; con pocos usuarios, la estadística es pequeña.</li>
+    <li>Tendencias, intentos de inicio de sesión, el último código TOTP usado y los usuarios activos viven en memoria de cada proceso y se reinician al reiniciarlo; en Kubernetes, cada réplica tiene los suyos (y sus propias cuentas).</li>
+    <li>Para enviar los códigos de verificación por correo hay que configurar una cuenta SMTP (por ejemplo, Gmail con contraseña de aplicación); sin ella, los códigos solo aparecen en la consola del servidor.</li>
+    <li>El secreto TOTP se guarda en la base sin cifrar; en un sistema real se cifraría con una llave guardada fuera de la base.</li>
+    <li>Las cuentas de prueba creadas antes de pedir el correo se borraron: el equipo debe registrarse de nuevo.</li>
+  <li>Un usuario nuevo pasa a "personalizado" solo cuando se vuelve a correr el pipeline offline.</li>
+    <li>Los pósters y las gráficas (Chart.js) se cargan de internet; sin conexión la app funciona con carteles de color.</li>
+    <li>Falta probar la demo con 2 o 3 máquinas físicas en la misma red.</li>
+  </ul>
+</section>
+
+</body>
+</html>

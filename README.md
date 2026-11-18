@@ -2,6 +2,8 @@
 ## Software Engineering II — Milestone 3: Testing, Validation, and Deployment of AI Systems
 
 > Milestone 3 additions are documented in [`docs/MILESTONE3_IMPLEMENTATION.md`](docs/MILESTONE3_IMPLEMENTATION.md).
+>
+> **Entrega final** (aplicación web en español, cuentas, arranque en frío, tendencias en vivo, métricas y demo en varias máquinas): [`docs/ENTREGA_FINAL.md`](docs/ENTREGA_FINAL.md).
 
 **Universidad Autónoma del Estado de México (UAEMex)**  
 *Faculty of Engineering — Degree in Artificial Intelligence Engineering*
