@@ -257,13 +257,15 @@ def test_the_interface_carries_no_business_logic() -> None:
     """
     from application.api import STATIC_DIR
 
-    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    # Entrega final: la interfaz se dividió en index.html, app.js y metricas.js.
+    page = "".join(f.read_text(encoding="utf-8") for f in STATIC_DIR.iterdir() if f.is_file())
     for forbidden in ("argpartition", "latent", "embedding", "cosine", "sort("):
         assert forbidden not in page, f"the page appears to compute: {forbidden}"
     # It talks to the documented endpoints and nothing else.
     assert "/recommendations/" in page
     assert "/interactions" in page
-    assert "/health" in page
+    assert "/tendencias" in page
+    assert "/auth/sesion" in page
 
 
 def test_the_api_starts_without_the_interface(

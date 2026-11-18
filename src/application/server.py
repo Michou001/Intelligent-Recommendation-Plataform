@@ -18,6 +18,7 @@ it accepts, so setting it once here removes the delay for every worker.
 from __future__ import annotations
 
 import os
+import secrets
 import socket
 
 import uvicorn
@@ -45,9 +46,29 @@ def bind_listening_socket(config: uvicorn.Config) -> socket.socket:
     return sock
 
 
+def ip_en_la_red() -> str:
+    """IP de esta máquina en la red local, la que deben abrir las otras máquinas.
+
+    Conectar un socket UDP no envía nada; solo hace que el sistema elija la
+    interfaz de red que usaría para salir, y de ella se lee la IP.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sonda:
+        try:
+            sonda.connect(("8.8.8.8", 80))
+            return str(sonda.getsockname()[0])
+        except OSError:
+            return "127.0.0.1"
+
+
 def main() -> None:
     config = build_config()
+    if config.host == "0.0.0.0":  # noqa: S104 - se compara, no se abre
+        print(f"\n  Desde otras máquinas abre: http://{ip_en_la_red()}:{config.port}/ui/\n")
     if config.workers > 1:
+        # Cada proceso firma y revisa tokens de sesión. Si cada uno generara su
+        # propio secreto, un token firmado por un proceso fallaría en otro. Se
+        # genera uno aquí y los procesos hijos lo heredan por el entorno.
+        os.environ.setdefault("RECO_JWT_SECRETO", secrets.token_urlsafe(32))
         Multiprocess(config, sockets=[bind_listening_socket(config)]).run()
     else:
         # A single worker lets asyncio create the socket, which already
