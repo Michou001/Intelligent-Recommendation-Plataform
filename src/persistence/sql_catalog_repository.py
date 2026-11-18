@@ -67,6 +67,11 @@ class SqlCatalogRepository(ICatalogRepository):
     def save(self, item: CatalogItem) -> None:
         self.save_many([item])
 
+    def listar_titulos(self) -> dict[ItemId, str]:
+        consulta = select(catalog_items.c.item_id, catalog_items.c.title)
+        with self._engine.connect() as conexion:
+            return {int(item_id): str(titulo) for item_id, titulo in conexion.execute(consulta)}
+
     def save_many(self, items: Sequence[CatalogItem]) -> int:
         """Insert or update a batch, so seeding a full catalog is one transaction."""
         if not items:
