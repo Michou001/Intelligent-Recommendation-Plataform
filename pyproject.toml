@@ -21,6 +21,9 @@ dependencies = [
     "scikit-learn>=1.4",       # ContentBasedStrategy similarity utilities
     "structlog>=24.1",         # Operational logging emitted by the decorators
     "SQLAlchemy>=2.0",         # SqlUserProfileRepository / SqlCatalogRepository
+    "PyJWT>=2.8",              # Tokens de sesión de la aplicación web (entrega final)
+    "pyotp>=2.9",              # Códigos TOTP de la verificación en dos pasos
+    "segno>=1.6",              # Código QR para dar de alta la app autenticadora
 ]
 
 [project.optional-dependencies]
@@ -87,3 +90,4 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q"
+markers = ["autenticacion: la prueba exige un token real en lugar de omitirlo"]

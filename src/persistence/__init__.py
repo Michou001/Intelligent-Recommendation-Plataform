@@ -19,12 +19,15 @@ import threading
 from sqlalchemy import (
     Column,
     Engine,
+    Index,
     Integer,
     MetaData,
     String,
     Table,
     Text,
     create_engine,
+    inspect,
+    text,
 )
 
 metadata = MetaData()
@@ -47,6 +50,36 @@ catalog_items = Table(
     Column("categories", Text, nullable=False, default=""),
 )
 
+#: Cuentas de acceso de la aplicación web; user_id es el mismo de user_profiles.
+cuentas = Table(
+    "cuentas",
+    metadata,
+    Column("user_id", Integer, primary_key=True),
+    Column("usuario", String(32), nullable=False, unique=True),
+    Column("hash_contrasena", String(256), nullable=False),
+    # Columnas agregadas después de crear la tabla: ver _migrar_cuentas.
+    Column("correo", String(254), nullable=True),
+    Column("totp_secreto", String(64), nullable=True),
+    Column("totp_activo", Integer, nullable=False, default=0),
+    Column("codigos_respaldo", Text, nullable=False, default=""),
+    # El correo se confirma con un código que llega a ese correo.
+    Column("correo_verificado", Integer, nullable=False, default=0),
+    Column("codigo_correo", String(64), nullable=True),  # hash SHA-256 del código
+    Column("codigo_correo_expira", Integer, nullable=True),  # segundos desde 1970
+)
+Index("ix_cuentas_correo", cuentas.c.correo, unique=True)
+
+#: Columna -> definición SQL, para agregarla a una tabla ``cuentas`` ya existente.
+_COLUMNAS_NUEVAS_CUENTAS = {
+    "correo": "VARCHAR(254)",
+    "totp_secreto": "VARCHAR(64)",
+    "totp_activo": "INTEGER NOT NULL DEFAULT 0",
+    "codigos_respaldo": "TEXT NOT NULL DEFAULT ''",
+    "correo_verificado": "INTEGER NOT NULL DEFAULT 0",
+    "codigo_correo": "VARCHAR(64)",
+    "codigo_correo_expira": "INTEGER",
+}
+
 _engines: dict[str, Engine] = {}
 _lock = threading.Lock()
 
@@ -66,7 +99,26 @@ def get_engine(url: str, *, create_tables: bool = True) -> Engine:
             if create_tables:
                 _ensure_parent_directory(url)
                 metadata.create_all(engine)
+                _migrar_cuentas(engine)
         return engine
+
+
+def _migrar_cuentas(engine: Engine) -> None:
+    """Agrega a una base existente las columnas nuevas de ``cuentas``.
+
+    ``create_all`` crea las tablas que faltan pero no modifica las que ya
+    existen, así que una base creada antes del correo y del TOTP se completa
+    aquí. Las cuentas viejas quedan sin correo (NULL), lo que el índice único
+    permite.
+    """
+    existentes = {columna["name"] for columna in inspect(engine).get_columns("cuentas")}
+    with engine.begin() as conexion:
+        for nombre, definicion in _COLUMNAS_NUEVAS_CUENTAS.items():
+            if nombre not in existentes:
+                conexion.execute(text(f"ALTER TABLE cuentas ADD COLUMN {nombre} {definicion}"))
+        conexion.execute(
+            text("CREATE UNIQUE INDEX IF NOT EXISTS ix_cuentas_correo ON cuentas (correo)")
+        )
 
 
 def _ensure_parent_directory(url: str) -> None:

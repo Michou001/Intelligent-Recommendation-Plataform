@@ -9,6 +9,7 @@ which is what lets it run on a clean checkout.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -128,7 +129,18 @@ def settings(tmp_path: Path, feature_store_dir: Path, monkeypatch: pytest.Monkey
     monkeypatch.setenv("RECO_MONGO_URL", "")
     monkeypatch.setenv("RECO_LOG_LEVEL", "CRITICAL")
     monkeypatch.setenv("RECO_ERROR_LOG_PATH", str(tmp_path / "logs" / "errors.jsonl"))
+    # Nunca enviar correos reales desde las pruebas: todo va al buzón local.
+    monkeypatch.setenv("RECO_SMTP_USUARIO", "")
+    monkeypatch.setenv("RECO_BUZON_CORREOS", str(tmp_path / "logs" / "correos.log"))
     return load_settings()
+
+
+@pytest.fixture(autouse=True)
+def _sin_autenticacion(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Las pruebas del Milestone 3 ejercitan la recomendación, no el inicio de
+    sesión, así que omiten el token. Las marcadas con ``autenticacion`` sí lo exigen."""
+    if request.node.get_closest_marker("autenticacion") is None:
+        monkeypatch.setattr("application.api.verificar_dueno", lambda *args: None)
 
 
 @pytest.fixture(autouse=True)
@@ -205,3 +217,46 @@ def user_features() -> UserFeatures:
 def cold_features() -> UserFeatures:
     """Features of a user with nothing to personalise with."""
     return UserFeatures(user_id=COLD_START_USER, is_cold_start=True, feature_store_version="v-test")
+
+
+# ------------------------------------------------- correo de verificación
+
+
+class EnviadorDePrueba:
+    """Guarda los correos en lugar de enviarlos (implementa IEnviadorCorreo)."""
+
+    def __init__(self) -> None:
+        self.enviados: list[tuple[str, str, str]] = []
+
+    def enviar(self, destinatario: str, asunto: str, texto: str) -> None:
+        self.enviados.append((destinatario, asunto, texto))
+
+    def codigo_para(self, correo: str) -> str:
+        asuntos = [a for d, a, _ in self.enviados if d == correo.lower()]
+        return re.findall(r"\b\d{6}\b", asuntos[-1])[-1]
+
+
+def registrar_confirmado(servicio, *args, **kwargs):  # type: ignore[no-untyped-def]
+    """Registra con ServicioAutenticacion y confirma el código; devuelve la sesión."""
+    pendiente = servicio.registrar(*args, **kwargs)
+    return servicio.confirmar_correo(
+        pendiente.correo, servicio._enviador.codigo_para(pendiente.correo)
+    )
+
+
+def codigo_del_buzon(archivo: Path, correo: str) -> str:
+    """Último código que el buzón local anotó para ese correo."""
+    texto = archivo.read_text(encoding="utf-8")
+    return re.findall(rf"Para: {re.escape(correo.lower())} \| .*?(\d{{6}})", texto)[-1]
+
+
+def registrar_por_http(cliente, settings: Settings, datos: dict) -> dict:  # type: ignore[no-untyped-def,type-arg]
+    """POST /auth/registro, toma el código del buzón y confirma; devuelve la sesión."""
+    respuesta = cliente.post("/auth/registro", json=datos)
+    assert respuesta.status_code == 201, respuesta.text
+    codigo = codigo_del_buzon(settings.web.buzon_correos, datos["correo"])
+    confirmada = cliente.post(
+        "/auth/correo/confirmar", json={"correo": datos["correo"], "codigo": codigo}
+    )
+    assert confirmada.status_code == 200, confirmada.text
+    return dict(confirmada.json())

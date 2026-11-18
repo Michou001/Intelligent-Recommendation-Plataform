@@ -52,6 +52,8 @@ COMPOSITION_ROOTS: dict[str, set[str] | str] = {
     "application.api": "*",
     # Process entry point of the FR-06 worker.
     "messaging.feedback_history_service": {"main"},
+    # Entrega final: comando que crea una cuenta de demostración.
+    "application.cuenta_demo": {"main"},
 }
 
 
@@ -204,7 +206,12 @@ def test_the_rule_accepts_the_interfaces_it_is_meant_to_allow() -> None:
 
 def test_composition_roots_are_declared_and_minimal() -> None:
     """The exemption must stay small and intentional."""
-    assert set(COMPOSITION_ROOTS) == {"application.api", "messaging.feedback_history_service"}
+    assert set(COMPOSITION_ROOTS) == {
+        "application.api",
+        "messaging.feedback_history_service",
+        "application.cuenta_demo",
+    }
+    assert COMPOSITION_ROOTS["application.cuenta_demo"] == {"main"}
     assert COMPOSITION_ROOTS["messaging.feedback_history_service"] == {"main"}
 
 

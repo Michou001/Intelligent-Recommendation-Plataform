@@ -13,6 +13,7 @@ build runs in development, testing, and production without edits.
 from __future__ import annotations
 
 import os
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -222,6 +223,53 @@ class LoggingSettings:
 
 
 @dataclass(frozen=True)
+class AplicacionWebSettings:
+    """Configuración de la entrega final: sesiones, tendencias y catálogo en español."""
+
+    # Sin RECO_JWT_SECRETO se genera uno al arrancar: las sesiones caducan al
+    # reiniciar el servidor, pero nunca queda un secreto fijo en el código.
+    jwt_secreto: str = field(
+        default_factory=lambda: _env_str("RECO_JWT_SECRETO", "") or secrets.token_urlsafe(32)
+    )
+    minutos_sesion: int = field(default_factory=lambda: _env_int("RECO_MINUTOS_SESION", 60))
+    max_intentos_fallidos: int = field(
+        default_factory=lambda: _env_int("RECO_MAX_INTENTOS_FALLIDOS", 5)
+    )
+    segundos_bloqueo: int = field(default_factory=lambda: _env_int("RECO_SEGUNDOS_BLOQUEO", 60))
+    minutos_tendencia: int = field(default_factory=lambda: _env_int("RECO_MINUTOS_TENDENCIA", 30))
+    catalogo_es: Path = field(
+        default_factory=lambda: _env_path(
+            "RECO_CATALOGO_ES", REPO_ROOT / "datasets" / "peliculas_es.csv"
+        )
+    )
+    reporte_arranque_en_frio: Path = field(
+        default_factory=lambda: _env_path(
+            "RECO_REPORTE_ARRANQUE", REPO_ROOT / "reports" / "arranque_en_frio.json"
+        )
+    )
+    reporte_evaluacion: Path = field(
+        default_factory=lambda: _env_path(
+            "RECO_REPORTE_EVALUACION", REPO_ROOT / "reports" / "evaluation_report.json"
+        )
+    )
+    # Envío del código que confirma el correo. Sin RECO_SMTP_USUARIO no se envía
+    # nada: el mensaje se anota en el buzón local (solo para desarrollo).
+    smtp_host: str = field(default_factory=lambda: _env_str("RECO_SMTP_HOST", "smtp.gmail.com"))
+    smtp_puerto: int = field(default_factory=lambda: _env_int("RECO_SMTP_PUERTO", 587))
+    smtp_usuario: str = field(default_factory=lambda: _env_str("RECO_SMTP_USUARIO", ""))
+    smtp_contrasena: str = field(default_factory=lambda: _env_str("RECO_SMTP_CONTRASENA", ""))
+    smtp_remitente: str = field(default_factory=lambda: _env_str("RECO_SMTP_REMITENTE", ""))
+    buzon_correos: Path = field(
+        default_factory=lambda: _env_path(
+            "RECO_BUZON_CORREOS", REPO_ROOT / "artifacts" / "logs" / "correos_sin_enviar.log"
+        )
+    )
+    minutos_codigo_correo: int = field(
+        default_factory=lambda: _env_int("RECO_MINUTOS_CODIGO_CORREO", 10)
+    )
+
+
+@dataclass(frozen=True)
 class Settings:
     """Aggregate configuration object consumed by the composition root."""
 
@@ -233,6 +281,7 @@ class Settings:
     messaging: MessagingSettings = field(default_factory=MessagingSettings)
     persistence: PersistenceSettings = field(default_factory=PersistenceSettings)
     logging: LoggingSettings = field(default_factory=LoggingSettings)
+    web: AplicacionWebSettings = field(default_factory=AplicacionWebSettings)
 
     @property
     def ACTIVE_STRATEGY(self) -> str:  # noqa: N802 - spelling reproduced from Section 9.6

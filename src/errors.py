@@ -40,6 +40,15 @@ MENSAJES_ES: dict[str, str] = {
     "route_not_found": "La ruta solicitada no existe.",
     "method_not_allowed": "El método HTTP no está permitido en esta ruta.",
     "http_error": "La solicitud no pudo atenderse.",
+    "usuario_ya_existe": "Ese nombre de usuario ya está registrado.",
+    "correo_ya_registrado": "Ese correo ya tiene una cuenta.",
+    "codigo_invalido": "El código de verificación no es válido o ya expiró.",
+    "credenciales_invalidas": "Correo o contraseña incorrectos.",
+    "correo_sin_verificar": "Confirma tu correo: te enviamos un código de 6 dígitos.",
+    "correo_no_enviado": "No pudimos enviar el correo con tu código. Intenta de nuevo.",
+    "sesion_invalida": "Tu sesión no es válida o ya expiró. Vuelve a iniciar sesión.",
+    "acceso_denegado": "No tienes permiso para consultar los datos de otro usuario.",
+    "demasiados_intentos": "Demasiados intentos fallidos. Espera un minuto e inténtalo de nuevo.",
 }
 
 #: Spanish names of the request fields, used to explain a validation error.
@@ -52,6 +61,11 @@ CAMPOS_ES: dict[str, str] = {
     "model_version": "La versión del modelo",
     "metadata": "Los metadatos",
     "occurred_at": "La fecha del evento",
+    "usuario": "El nombre de usuario",
+    "contrasena": "La contraseña",
+    "correo": "El correo",
+    "codigo": "El código de verificación",
+    "generos": "La lista de géneros",
 }
 
 #: Spanish wording of the Pydantic error types a client can trigger. ``{...}``
@@ -69,6 +83,7 @@ VALIDACIONES_ES: dict[str, str] = {
     "string_type": "debe ser texto",
     "string_too_short": "debe tener al menos {min_length} caracteres",
     "string_too_long": "debe tener como máximo {max_length} caracteres",
+    "string_pattern_mismatch": "solo admite letras, números y guion bajo",
     "too_long": "admite como máximo {max_length} elementos",
     "list_type": "debe ser una lista",
     "dict_type": "debe ser un objeto",
@@ -183,6 +198,51 @@ class EventPublishError(RecommendationPlatformError):
     degradable = True
 
 
+class UsuarioYaExisteError(RecommendationPlatformError):
+    status_code = HTTPStatus.CONFLICT
+    code = "usuario_ya_existe"
+
+
+class CorreoYaRegistradoError(RecommendationPlatformError):
+    status_code = HTTPStatus.CONFLICT
+    code = "correo_ya_registrado"
+
+
+class CodigoInvalidoError(RecommendationPlatformError):
+    status_code = HTTPStatus.UNAUTHORIZED
+    code = "codigo_invalido"
+
+
+class CorreoNoEnviadoError(RecommendationPlatformError):
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "correo_no_enviado"
+
+
+class CorreoSinVerificarError(RecommendationPlatformError):
+    status_code = HTTPStatus.FORBIDDEN
+    code = "correo_sin_verificar"
+
+
+class CredencialesInvalidasError(RecommendationPlatformError):
+    status_code = HTTPStatus.UNAUTHORIZED
+    code = "credenciales_invalidas"
+
+
+class SesionInvalidaError(RecommendationPlatformError):
+    status_code = HTTPStatus.UNAUTHORIZED
+    code = "sesion_invalida"
+
+
+class AccesoDenegadoError(RecommendationPlatformError):
+    status_code = HTTPStatus.FORBIDDEN
+    code = "acceso_denegado"
+
+
+class DemasiadosIntentosError(RecommendationPlatformError):
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "demasiados_intentos"
+
+
 #: Reason codes attached to a degraded response, so a client (and the tests)
 #: can tell *why* the popularity fallback was served.
 DEGRADATION_REASONS: dict[type[RecommendationPlatformError], str] = {
@@ -203,4 +263,13 @@ __all__ = [
     "ModelUnavailableError",
     "RecommendationPlatformError",
     "UserNotFoundError",
+    "AccesoDenegadoError",
+    "CodigoInvalidoError",
+    "CorreoNoEnviadoError",
+    "CorreoSinVerificarError",
+    "CorreoYaRegistradoError",
+    "CredencialesInvalidasError",
+    "DemasiadosIntentosError",
+    "SesionInvalidaError",
+    "UsuarioYaExisteError",
 ]
