@@ -1,5 +1,5 @@
 # Intelligent Recommendation Platform
-## Software Engineering II — Milestone 3: Testing, Validation, and Deployment of AI Systems
+## Software Engineering II — Final Web Application and Milestone 3
 
 > Milestone 3 additions are documented in [`docs/MILESTONE3_IMPLEMENTATION.md`](docs/MILESTONE3_IMPLEMENTATION.md).
 >
@@ -22,8 +22,8 @@
 
 This platform implements a **Layered Architecture** following SOLID principles and GoF / ML design patterns, ensuring that the AI inference engine evolves independently from the business logic and persistence layers:
 
-1. **Presentation Layer (`src/presentation/`)**: Pydantic v2 schemas validating request/response contracts and enforcing *Fail-Fast* input validation (HTTP 400), plus a dependency-free web interface (`static/index.html`) that consumes the public endpoints and holds no business or AI logic.
-2. **Application Layer (`src/application/`)**: Orchestration via `RecommendationController`, real-time event ingestion via `InteractionIngestionService`, and REST API endpoints built with FastAPI.
+1. **Presentation Layer (`src/presentation/`)**: Pydantic v2 schemas validating request/response contracts and enforcing *Fail-Fast* input validation (HTTP 400), plus a Spanish web interface (`static/`) with registration, sign-in, movie search, recommendations, trends, and metrics. It consumes the API and holds no AI inference logic.
+2. **Application Layer (`src/application/`)**: Orchestration via `RecommendationController`, real-time event ingestion via `InteractionIngestionService`, FastAPI routes, email verification, JWT sessions, optional TOTP verification, and account-level authorization.
 3. **AI & Recommendation Engine Layer (`src/ai/`)**:
    - **Strategy Pattern (`src/ai/strategies/`)**: Interchangeable recommendation models implementing `IRecommendationStrategy.predict(user_features)`:
      - `CollaborativeFilteringStrategy` (implicit ALS)
@@ -58,11 +58,20 @@ pip install -e ".[dev,als,deep,content,cache,broker,nosql]"
 
 ### 2. Running Automated Tests
 
-Run the complete test suite (300 unit, integration, failure-injection and system tests):
+Run the complete unit, integration, failure-injection, and system test suite:
 
 ```bash
 python -m pytest
 ```
+
+The latest run documented in [`docs/ENTREGA_FINAL.md`](docs/ENTREGA_FINAL.md)
+reports **365 tests: 364 passed and 1 skipped when the optional neural-model
+dependency was unavailable**. This is a recorded result, not a guarantee for
+every environment or a new test run. To inspect the tests collected in your
+current environment, run `python -m pytest --collect-only -q`; installed extras
+can affect collection and skips. See `tests/conftest.py` for the
+`autenticacion` marker: legacy recommendation tests bypass authentication,
+while authentication tests exercise real token checks.
 
 Static analysis and strict architecture import verification:
 
@@ -84,15 +93,53 @@ python benchmarks/latency_p95.py --no-cache
 ### 4. Running the REST API
 
 ```bash
-# Set PYTHONPATH to src if running without editable pip install:
-$env:PYTHONPATH="src"
-python -m uvicorn application.api:app --reload --port 8000
+python -m application.server
 ```
 
+This entry point reads `HOST`, `PORT`, `WORKERS`, and `LOG_LEVEL` (defaults:
+`0.0.0.0`, `8000`, `1`, and `info`). It prints the LAN address for other devices.
+Use one process for the local demo: live trends and failed-login counters are
+stored in process memory. For development with automatic reload, use
+`python -m uvicorn application.api:app --reload --port 8000`.
+
 Once running, the following are available:
-- Web interface: [http://127.0.0.1:8000/](http://127.0.0.1:8000/) — query recommendations for any user, inspect the served model and latency, and register interactions
+- Web interface: [http://127.0.0.1:8000/ui/](http://127.0.0.1:8000/ui/) (`/` redirects here) — create an account, verify its email, sign in, and view your own recommendations
 - Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - ReDoc: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+
+### 5. Accounts and API access
+
+- **Registration:** the web form collects a username, unique email, password,
+  preferred genres, optional sex, and optional initial movie selections. The
+  server normalizes email addresses to lowercase. Passwords require at least
+  eight characters, an uppercase letter, a digit, and a symbol, with no spaces
+  or hyphens (`src/presentation/schemas.py`).
+- **Email confirmation:** `POST /auth/registro` creates a pending account;
+  `POST /auth/correo/confirmar` activates it using a six-digit code. Configure
+  SMTP for real delivery; without SMTP, development messages are written to
+  the server console and `artifacts/logs/correos_sin_enviar.log`. See
+  [`docs/ENTREGA_FINAL.md`](docs/ENTREGA_FINAL.md) for configuration.
+- **Sign-in:** `POST /auth/sesion` takes `correo` and `contrasena`. A numeric
+  MovieLens ID is not a login method. If TOTP is enabled, complete
+  `POST /auth/sesion/codigo` with the temporary token and authenticator or
+  backup code before using the session.
+- **Protected operations:** `GET /recommendations/{user_id}?k=10` and
+  `POST /interactions` require `Authorization: Bearer <session_token>`.
+  The ID must match the session owner: missing/invalid sessions return 401,
+  and another user's ID returns 403. IDs are positive integers; the current
+  schema does not impose a 610-user upper limit. Recommendation size `k`
+  accepts integers from 1 to 100 (default 10).
+- **New users:** recommendations progress through `arranque_en_frio`,
+  `calentamiento` (ALS fold-in using liked movies), and `personalizado` after
+  offline materialization. Initial movie selections can start a new account
+  directly in the warm-up phase.
+
+MovieLens accounts have no email or password by default. The documented
+`python -m application.cuenta_demo --usuario demo --correo demo@correo.com --id 1`
+command provisions a demonstration account for an existing MovieLens profile;
+it does not enable arbitrary numbered-user access. Full account, security,
+SMTP, and multi-device instructions are in
+[`docs/ENTREGA_FINAL.md`](docs/ENTREGA_FINAL.md).
 
 ---
 
@@ -132,6 +179,7 @@ recommendation-platform/
 ├── reports/                # Milestone 3 measurement reports (JSON / Markdown)
 ├── docs/                   # Guides, error handling, and user/developer manuals
 │   ├── MILESTONE3_IMPLEMENTATION.md
+│   ├── ENTREGA_FINAL.md
 │   ├── ERROR_HANDLING_ALGORITHM.md
 │   ├── User_Manual_v1.pdf
 │   └── Developer_Manual_v2.pdf
